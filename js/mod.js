@@ -47,15 +47,15 @@ function getPointGen() {
 	if (hasUpgrade("n1", 11)) {
 		mult = mult.times("2")
 	}
-
 	if (hasUpgrade("n1", 12)) {
 		mult = mult.times(upgradeEffect("n1", 12))
 	}
-
 	if (hasUpgrade("n1", 13)) {
 		mult = mult.times(upgradeEffect("n1", 13))
 	}
-
+	if (hasMilestone("n1", 1)) {
+		 mult = mult.times("3")
+	}
 	return base.times(mult)
 }
 
@@ -86,8 +86,20 @@ displayThings = [
 							if (hasUpgrade("n1", 23)) {
 								numberText = "0.167"
 
-								if (hasUpgrade("n1", 23)) {
+								if (hasUpgrade("n1", 31)) {
 									numberText = "0.250"
+
+									if (hasUpgrade("n1", 32)) {
+										numberText = "0.333"
+
+										if (hasUpgrade("n1", 33)) {
+											numberText = "0.500"
+
+											if (hasUpgrade("n1", 41)) {
+												numberText = "1.000"
+											}
+										}
+									}
 								}
 							}
 						}

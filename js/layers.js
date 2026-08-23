@@ -32,6 +32,12 @@ addLayer("n1", {
         if (hasUpgrade("n1", 31)) {
 		    mult = mult.times(upgradeEffect("n1", 31))
 	    }
+        if (hasUpgrade("n1", 33)) {
+		    mult = mult.times(upgradeEffect("n1", 33))
+	    }
+        if (hasMilestone("n1", 1)) {
+		    mult = mult.times("3")
+	    }
         return mult
     },
     gainExp() { // Calculate the exponent on main currency from bonuses
@@ -44,7 +50,18 @@ addLayer("n1", {
         return exp
     },
     row: 0, // Row the layer is in on the tree (0 is the first row)
-    layerShown(){return true},
+    layerShown(){
+        return true
+    },
+    passiveGeneration() {
+        let gen = new Decimal("0")
+
+        if (hasUpgrade("n1", 41)) {
+            gen = gen.add("0.01")
+        }
+
+        return gen
+    },
     upgrades: {
         11: {
             title() {
@@ -209,10 +226,10 @@ addLayer("n1", {
                 return `1/3`
             },
             description() {
-                return `Increases Small Number gain exponent by +0.05.`
+                return `Increases Small Number gain exponent by <b>+0.05</b>.`
             },
             cost() {
-                let cost = new Decimal("50")
+                let cost = new Decimal("100")
                 return cost
             },
             effect() {
@@ -221,28 +238,127 @@ addLayer("n1", {
             },
             effectDisplay() {
                 let eff = upgradeEffect(this.layer, this.id);
-                return format(eff, 3) + "x"; // Formats the number nicely using TMT's built-in formatter
+                return "+" + format(eff, 3); // Formats the number nicely using TMT's built-in formatter
             },
             unlocked() {
                 return hasUpgrade("n1", 31)
             },
         },
+        33: {
+            title() {
+                return `1/2`
+            },
+            description() {
+                return `Best Small Numbers multiplies Small Numbers gain, min is <b>1.500x</b>`
+            },
+            cost() {
+                let cost = new Decimal("200")
+                return cost
+            },
+            effect() {
+                let eff = player.n1.best.max(1).log10().add(1.5);
+                return eff;
+            },
+            effectDisplay() {
+                let eff = upgradeEffect(this.layer, this.id);
+                return format(eff, 3) + "x";
+            },
+            unlocked() {
+                return hasUpgrade("n1", 32)
+            },
+        },
+        41: {
+            title() {
+                return `Ones`
+            },
+            description() {
+                return `Remove the ablity to prestige, but generate <b>1%</b> of Small Numbers per second and unlock milestones.`
+            },
+            cost() {
+                let cost = new Decimal("1000")
+                return cost
+            },
+            unlocked() {
+                return hasUpgrade("n1", 33)
+            },
+        },
+    },
+    milestones: {
+        1: {
+            requirementDescription: "Number 1",
+            effectDescription: "Unlock the second layer and gain <b>3.000x</b> more googology points and small numbers.",
+            done() { 
+                return hasUpgrade("n1", 41); 
+            },
+            unlocked() {
+                return hasUpgrade("n1", 41)
+            },
+        },
     },
     tabFormat: {
-    "Upgrades": {
+        "Upgrades": {
             content: [
                 ["display-text", function() { 
-                let points = player.points;
-                return `Googology Points: <h2 style="color: #ff0000; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;">${format(points)}</h2>`; 
+                    let points = player.points;
+                    return `Googology Points: <h2 style="color: #ff0000; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;">${format(points)}</h2>`; 
                 }],
+                
+                // Hide prestige button when upgrade 41 is bought
                 "main-display",
-                "prestige-button",
-                ["display-text", function() { 
-                let best = player.n1.best;
-                return `Best Small Numbers: <h2 style="color: #ff0000; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;">${best}</h2>`; 
+                function() { return !hasUpgrade("n1", 41) ? "prestige-button" : "" },
+                
+                // Working Gain Tracker Text
+                ["display-text", function() {
+                    if (hasUpgrade("n1", 41)) {
+                        let gen = new Decimal("0.01")
+                        let gain = tmp.n1.resetGain.times(gen); 
+                        return `You are earning <h2 style="color: #ff0000; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;">${format(gain)}</h2> Small Numbers per second`;
+                    }
+                    return "";
                 }],
+                
                 "blank",
-                "upgrades"
+                
+                ["display-text", function() { 
+                    let best = player.n1.best;
+                    return `Best Small Numbers: <h2 style="color: #ff0000; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;">${format(best)}</h2>`; 
+                }],
+                
+                "upgrades",
+            ]
+        },
+        "Milestones": {
+            unlocked() {
+                return hasUpgrade("n1", 41)
+            },
+            content: [
+                ["display-text", function() { 
+                    let points = player.points;
+                    return `Googology Points: <h2 style="color: #ff0000; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;">${format(points)}</h2>`; 
+                }],
+                
+                // Hide prestige button when upgrade 41 is bought
+                "main-display",
+                function() { return !hasUpgrade("n1", 41) ? "prestige-button" : "" },
+                
+                // Working Gain Tracker Text
+                ["display-text", function() {
+                    if (hasUpgrade("n1", 41)) {
+                        let gen = new Decimal("0.01")
+                        let gain = tmp.n1.resetGain.times(gen); 
+                        return `You are earning <h2 style="color: #ff0000; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;">${format(gain)}</h2> Small Numbers per second`;
+                    }
+                    return "";
+                }],
+                
+                "blank",
+                
+                ["display-text", function() { 
+                    let best = player.n1.best;
+                    return `Best Small Numbers: <h2 style="color: #ff0000; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;">${format(best)}</h2>`; 
+                }],
+                
+                "milestones",
             ]
         },
     },
