@@ -1,12 +1,12 @@
 let modInfo = {
-	name: "The ??? Tree",
-	author: "nobody",
-	pointsName: "points",
+	name: "The Tree of Googology",
+	author: "Karl",
+	pointsName: "googology points",
 	modFiles: ["layers.js", "tree.js"],
 
 	discordName: "",
 	discordLink: "",
-	initialStartPoints: new Decimal (10), // Used for hard resets and new players
+	initialStartPoints: new Decimal (0), // Used for hard resets and new players
 	offlineLimit: 1,  // In hours
 }
 
@@ -41,8 +41,22 @@ function getPointGen() {
 	if(!canGenPoints())
 		return new Decimal(0)
 
-	let gain = new Decimal(1)
-	return gain
+	let base = new Decimal("0.1")
+	let mult = new Decimal("1")
+
+	if (hasUpgrade("n1", 11)) {
+		mult = mult.times("2")
+	}
+
+	if (hasUpgrade("n1", 12)) {
+		mult = mult.times(upgradeEffect("n1", 12))
+	}
+
+	if (hasUpgrade("n1", 13)) {
+		mult = mult.times(upgradeEffect("n1", 13))
+	}
+
+	return base.times(mult)
 }
 
 // You can add non-layer related variables that should to into "player" and be saved here, along with default values
@@ -50,12 +64,65 @@ function addedPlayerData() { return {
 }}
 
 // Display extra things at the top of the page
-var displayThings = [
+displayThings = [
+    function() { 
+        let numberText = "0.000";
+
+		if (hasUpgrade("n1", 11)) {
+			numberText = "0.010"
+
+			if (hasUpgrade("n1", 12)) {
+				numberText = "0.020"
+
+				if (hasUpgrade("n1", 13)) {
+					numberText = "0.030"
+
+					if (hasUpgrade("n1", 21)) {
+						numberText = "0.050"
+
+						if (hasUpgrade("n1", 22)) {
+							numberText = "0.100"
+
+							if (hasUpgrade("n1", 23)) {
+								numberText = "0.167"
+
+								if (hasUpgrade("n1", 23)) {
+									numberText = "0.250"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+        return `
+                <style>
+                    @keyframes rainbowGlow {
+                        0%   { color: #ff0000; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000; }
+                        10%  { color: #ff7700; text-shadow: 0 0 10px #ff7700, 0 0 20px #ff7700; }
+                        20%  { color: #ffdd00; text-shadow: 0 0 10px #ffdd00, 0 0 20px #ffdd00; }
+                        30%  { color: #77ff00; text-shadow: 0 0 10px #77ff00, 0 0 20px #77ff00; }
+                        40%  { color: #00ff55; text-shadow: 0 0 10px #00ff55, 0 0 20px #00ff55; }
+                        50%  { color: #00ffff; text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff; }
+                        60%  { color: #0055ff; text-shadow: 0 0 10px #0055ff, 0 0 20px #0055ff; }
+                        70%  { color: #7700ff; text-shadow: 0 0 10px #7700ff, 0 0 20px #7700ff; }
+                        80%  { color: #ff00dd; text-shadow: 0 0 10px #ff00dd, 0 0 20px #ff00dd; }
+                        90%  { color: #ff0055; text-shadow: 0 0 10px #ff0055, 0 0 20px #ff0055; }
+                        100% { color: #ff0000; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000; }
+                    }
+                    .rainbow-glow-text {
+                        animation: rainbowGlow 10s linear infinite;
+                    }
+                </style>
+                Your Number is <h2 class="rainbow-glow-text">${numberText}</h2>
+            `; 
+    },
 ]
 
 // Determines when the game "ends"
 function isEndgame() {
-	return player.points.gte(new Decimal("e280000000"))
+	return false
 }
 
 
