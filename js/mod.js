@@ -61,6 +61,12 @@ function getPointGen() {
 	if (hasMilestone("n1", 1)) {
 		 mult = mult.times("3")
 	}
+	if (hasUpgrade("c1", 21)) {
+		mult = mult.times("2")
+	}
+	if (hasUpgrade("c1", 33)) {
+		mult = mult.times("1.5")
+	}
 	return base.times(mult)
 }
 
@@ -101,7 +107,11 @@ displayThings = [
 											numberText = "0.500"
 
 											if (hasUpgrade("n1", 41)) {
-												numberText = "1.000"
+												numberText = "Cycle 1"
+
+												if (hasMilestone("n1", 2)) {
+													numberText = "1"
+												}
 											}
 										}
 									}
