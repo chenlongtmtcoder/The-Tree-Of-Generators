@@ -12,11 +12,17 @@ let modInfo = {
 
 // Set your version in num and name
 let VERSION = {
-	num: "0.1",
-	name: "Small Numbers",
+	num: "0.1.1",
+	name: "Cycle 1 Update.",
 }
 
 let changelog = `<h1>Changelog:</h1><br>
+	<h2>v0.1.1</h2><br>
+		- Added <h3>1</h3> new layer, <b>Cycle 1</b><br>
+		- Added <b>20</b> upgrades.<br>
+		- Added <b>3</b> buyables.<br>
+		<h2>Warning: Inflation!</h2>
+		- Endgame: Reach <h3>1</h3> and End of Cycle 1 [1.000F1,000 Cycle 1 Points, yes it is.]<br><br>
 	<h2>v0.1</h2><br>
 		- Added <h3>1</h3> new layer, <b>Small Numbers</b><br>
 		- Added <b>10</b> upgrades.<br>
