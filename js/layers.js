@@ -1,1042 +1,1355 @@
-addLayer("c1", {
-    name: "Cycle 1", // This is optional, only used in a few places, If absent it just uses the layer id.
-    symbol: "c1", // This appears on the layer's node. Default is the id with the first letter capitalized
-    position: 0, // Horizontal position within a row. By default it uses the layer id and sorts in alphabetical order
-    row: 0, // Row the layer is in on the tree (0 is the first row)
-    startData() { return {
-        unlocked: true,
-		points: new Decimal(0),
-        best: new Decimal(0),
-    }},
-    tooltip: "Number Cycle 1: 0.999...",
-    color: "#ffffff",
-    requires: new Decimal(1), // Can be a function that takes requirement increases into account
-    resource: "Cycle 1 Points", // Name of prestige currency
-    baseResource: "googology points", // Name of resource prestige is based on
-    baseAmount() {return player.points}, // Get the current amount of baseResource
-    type: "normal", // normal: cost to gain currency depends on amount gained. static: cost depends on how much you already have
-    exponent() {
-        let baseexp = new Decimal("0") // Prestige currency exponent
-        return baseexp
-    },
-    gainMult() { // Calculate the multiplier for main currency from bonuses
-        mult = new Decimal(1)
-        if (hasUpgrade("c1", 11)) {
-		    mult = mult.times(upgradeEffect("c1", 11))
-	    }
-        if (hasUpgrade("c1", 12)) {
-		    mult = mult.times(upgradeEffect("c1", 12))
-	    }
-        if (hasUpgrade("c1", 13)) {
-		    mult = mult.times(upgradeEffect("c1", 13))
-	    }
-        if (player.c1.buyables[11].gte("1")) {
-		    mult = mult.times(buyableEffect("c1", 11))
-	    }
-        if (player.c1.buyables[13].gte("1")) {
-		    mult = mult.pow(buyableEffect("c1", 13))
-	    }
-        return mult
-    },
-    gainExp() { // Calculate the exponent on main currency from bonuses
-        let exp = new Decimal("1")
-        if (hasUpgrade("c1", 21)) {
-            exp = exp.add("0.1")
+addLayer("g", {
+  name: "generators",
+  symbol: "G",
+  position: 0,
 
-            if (hasUpgrade("c1", 22)) {
-                exp = exp.add("0.1")
+  startData() {
+    return {
+      unlocked: true,
+      points: new Decimal(0),
+      tier1: new Decimal(0),
+      tier2: new Decimal(0),
+      tier3: new Decimal(0),
+      tier4: new Decimal(0),
+      tier5: new Decimal(0),
+      tier6: new Decimal(0),
+      tier7: new Decimal(0),
+      tier8: new Decimal(0),
+      tier9: new Decimal(0),
+      tier10: new Decimal(0),
+    };
+  },
+
+  color: "lime",
+  requires: new Decimal(0),
+  resource: "Generator Powers",
+  baseResource: "points",
+
+  baseAmount() {
+    return player.points;
+  },
+
+  type: "normal",
+  exponent: 0,
+
+  gainMult() {
+    // 1. Base gain
+    let base = new Decimal(0);
+    if (hasUpgrade("g", 11)) base = base.add(upgradeEffect("g", 11));
+    if (hasUpgrade("g", 12)) base = base.add(upgradeEffect("g", 12));
+    if (hasMilestone("b", 4)) base = base.add("3");
+
+    // 2. Exponent
+    let exp = new Decimal("1");
+    if (hasUpgrade("g", 22)) exp = exp.add(upgradeEffect("g", 22));
+
+    // 3. Base gain calculation
+    let total = base.pow(exp);
+
+    // 4. Mult after base
+    let mult = new Decimal("1");
+    if (hasUpgrade("g", 13)) mult = mult.times(upgradeEffect("g", 13));
+    if (getBuyableAmount("g", 11).gt(0)) {
+      mult = mult.times(player.g.tier1.max("1"));
+    }
+    mult = mult.times(tmp.b.effect.max("1"));
+    if (hasMilestone("b", 2)) {
+      mult = mult.times(layers.b.getTimeeff1());
+    }
+    if (hasMilestone("b", 7)) {
+      mult = mult.times(layers.b.getSpeed().max("1"));
+    }
+
+    // 5. Grand total
+    return total.times(mult);
+  },
+
+  row: 0,
+
+  layerShown() {
+    return true;
+  },
+
+  passiveGeneration() {
+    return new Decimal("1");
+  },
+
+  getExpEff() {
+    let exp = new Decimal("0.50");
+    if (hasUpgrade("g", 23)) exp = exp.add(upgradeEffect("g", 23));
+    if (hasUpgrade("g", 31)) exp = exp.add("0.05");
+    if (hasUpgrade("g", 32)) exp = exp.add("0.05");
+    if (hasUpgrade("g", 33)) exp = exp.add("0.05");
+    if (hasUpgrade("g", 14)) exp = exp.add("0.05");
+    if (hasUpgrade("g", 24)) {
+      exp = exp.add("0.05");
+      if (player.b.time.gte(new Decimal(60).times(15))) {
+        exp = exp.add("0.05");
+      }
+    }
+    if (hasUpgrade("g", 34)) exp = exp.add("0.10");
+    return exp;
+  },
+
+  effect() {
+    let base = new Decimal("0");
+    if (player.g.points.gt("0")) base = player.g.points.add("1");
+    let exp = this.getExpEff();
+    return base.add("1").pow(exp);
+  },
+
+  effectDescription() {
+    let exp = this.getExpEff();
+    if (player.g.points.gt("0")) {
+      return `which <h3 style="color: red; text-shadow: 0px 0px 10px red">DIRECTLY</h3> increase point gain at a <h3 style="color: lime; text-shadow: 0px 0px 10px lime">^${format(
+        exp,
+        4
+      )}</h3> rate.<br>Currently: <h3 style="color: cyan; text-shadow: 0px 0px 10px cyan">${format(
+        this.effect(),
+        3
+      )}</h3> Points/s from Generators`;
+    } else {
+      return `which does absolutely nothing. :)`;
+    }
+  },
+
+  update(diff) {
+    if (getBuyableAmount("g", 15).gte(1)) {
+      let t5Gen = buyableEffect("g", 15);
+
+      player.g.tier5 = player.g.tier5.add(t5Gen.times(diff));
+    }
+    if (getBuyableAmount("g", 14).gte(1)) {
+      let t4Gen = buyableEffect("g", 14);
+
+      player.g.tier4 = player.g.tier4.add(t4Gen.times(diff));
+    }
+    if (getBuyableAmount("g", 13).gte(1)) {
+      let t3Gen = buyableEffect("g", 13);
+
+      player.g.tier3 = player.g.tier3.add(t3Gen.times(diff));
+    }
+    if (getBuyableAmount("g", 12).gte(1)) {
+      let t2Gen = buyableEffect("g", 12);
+
+      player.g.tier2 = player.g.tier2.add(t2Gen.times(diff));
+    }
+    if (getBuyableAmount("g", 11).gte(1)) {
+      let t1Gen = buyableEffect("g", 11);
+
+      player.g.tier1 = player.g.tier1.add(t1Gen.times(diff));
+    }
+  },
+
+  getGPbase() {
+    let base = new Decimal("2");
+    return base;
+  },
+
+  buyables: {
+    11: {
+      title: "Generator Tier I",
+
+      cost(x) {
+        let level = new Decimal(
+          x !== undefined ? x : getBuyableAmount(this.layer, this.id)
+        );
+
+        let baseCost = new Decimal(1000);
+        let baseLinear = new Decimal("1").add(level.times("0.1"));
+        let quadratic1 = new Decimal("1").add(level.times("0.0001"));
+        let mult = baseLinear
+          .pow(level)
+          .times(new Decimal(quadratic1).pow(level.pow(2)));
+
+        return baseCost.times(mult);
+      },
+
+      effect(x) {
+        let level = new Decimal(
+          x !== undefined ? x : getBuyableAmount(this.layer, this.id)
+        );
+
+        if (level.lte(0)) return new Decimal("0");
+
+        let base = layers[this.layer].getGPbase();
+
+        let mult = new Decimal("1");
+        mult = mult.times(player.g.tier2.max("1"));
+        if (hasUpgrade("g", 33)) {
+          mult = mult.times(upgradeEffect("g", 33));
+        }
+        if (hasUpgrade("g", 14)) {
+          mult = mult.times(upgradeEffect("g", 14));
+        }
+        if (hasMilestone("b", 1)) {
+          mult = mult.times(tmp.b.effect.max("1"));
+        }
+        if (hasMilestone("b", 7)) {
+          mult = mult.times(layers.b.getSpeed().max("1"));
+        }
+
+        let eff = base.pow(level.sub(1)).times(mult);
+        return eff;
+      },
+
+      display() {
+        let data = temp[this.layer].buyables[this.id];
+        let gpBase = layers[this.layer].getGPbase();
+
+        return `Generate Generator Tier 1, and multiply its gain by <h3>${format(
+          gpBase
+        )}</h3> per level-1.\n\nLevel: ${
+          player[this.layer].buyables[this.id] || 0
+        }\nCost: ${format(data.cost)} Points\nEffect: +${format(
+          data.effect
+        )} Tier 1 Powers/sec`;
+      },
+
+      canAfford() {
+        return player.points.gte(this.cost());
+      },
+
+      buy() {
+        let cost = this.cost();
+        if (!hasMilestone("b", 6)) {
+          player.points = player.points.sub(cost);
+        } else {
+        }
+        player.g.buyables[this.id] = getBuyableAmount(this.layer, this.id).add(
+          1
+        );
+      },
+
+      unlocked() {
+        return hasUpgrade("g", 23);
+      },
+    },
+    12: {
+      title: "Generator Tier II",
+
+      cost(x) {
+        let level = new Decimal(
+          x !== undefined ? x : getBuyableAmount(this.layer, this.id)
+        );
+
+        let baseCost = new Decimal("1e6");
+        let baseLinear = new Decimal("1").add(level.times("0.2"));
+        let quadratic1 = new Decimal("1").add(level.times("0.001"));
+        let mult = baseLinear
+          .pow(level)
+          .times(new Decimal(quadratic1).pow(level.pow(2)));
+
+        return baseCost.times(mult);
+      },
+
+      effect(x) {
+        let level = new Decimal(
+          x !== undefined ? x : getBuyableAmount(this.layer, this.id)
+        );
+
+        if (level.lte(0)) return new Decimal("0");
+
+        let base = layers[this.layer].getGPbase();
+
+        let mult = new Decimal("1");
+        mult = mult.times(player.g.tier3.max("1"));
+        if (hasUpgrade("g", 33)) {
+          mult = mult.times(upgradeEffect("g", 33));
+        }
+        if (hasUpgrade("g", 14)) {
+          mult = mult.times(upgradeEffect("g", 14));
+        }
+        if (hasMilestone("b", 2)) {
+          mult = mult.times(tmp.b.effect.max("1"));
+        }
+        if (hasMilestone("b", 7)) {
+          mult = mult.times(layers.b.getSpeed().max("1"));
+        }
+
+        let eff = base.pow(level.sub(1)).times(mult);
+        return eff;
+      },
+
+      display() {
+        let data = temp[this.layer].buyables[this.id];
+        let gpBase = layers[this.layer].getGPbase();
+
+        return `Generate Generator Tier 2, and multiply its gain by <h3>${format(
+          gpBase
+        )}</h3> per level-1.\n\nLevel: ${
+          player[this.layer].buyables[this.id] || 0
+        }\nCost: ${format(data.cost)} Points\nEffect: +${format(
+          data.effect
+        )} Tier 2 Powers/sec`;
+      },
+
+      canAfford() {
+        return player.points.gte(this.cost());
+      },
+
+      buy() {
+        let cost = this.cost();
+        if (!hasMilestone("b", 6)) {
+          player.points = player.points.sub(cost);
+        } else {
+        }
+        player.g.buyables[this.id] = getBuyableAmount(this.layer, this.id).add(
+          1
+        );
+      },
+
+      unlocked() {
+        return player.g.buyables[11].gte("10");
+      },
+    },
+    13: {
+      title: "Generator Tier III",
+
+      cost(x) {
+        let level = new Decimal(
+          x !== undefined ? x : getBuyableAmount(this.layer, this.id)
+        );
+
+        let baseCost = new Decimal("1e11");
+        let baseLinear = new Decimal("1").add(level.times("0.5"));
+        let quadratic1 = new Decimal("1").add(level.times("0.005"));
+        let quadratic2 = new Decimal("1").add(level.times("0.00001"));
+        let mult = baseLinear
+          .pow(level)
+          .times(new Decimal(quadratic1).pow(level.pow(2)))
+          .times(new Decimal(quadratic2).pow(level.pow(3)));
+
+        return baseCost.times(mult);
+      },
+
+      effect(x) {
+        let level = new Decimal(
+          x !== undefined ? x : getBuyableAmount(this.layer, this.id)
+        );
+
+        if (level.lte(0)) return new Decimal("0");
+
+        let base = layers[this.layer].getGPbase();
+
+        let mult = new Decimal("1");
+        mult = mult.times(player.g.tier4.max("1"));
+        if (hasUpgrade("g", 33)) {
+          mult = mult.times(upgradeEffect("g", 33));
+        }
+        if (hasUpgrade("g", 14)) {
+          mult = mult.times(upgradeEffect("g", 14));
+        }
+        if (hasMilestone("b", 3)) {
+          mult = mult.times(tmp.b.effect.max("1"));
+        }
+        if (hasMilestone("b", 9)) {
+          mult = mult.times(layers.b.getSpeed().max("1"));
+        }
+
+        let eff = base.pow(level.sub(1)).times(mult);
+        return eff;
+      },
+
+      display() {
+        let data = temp[this.layer].buyables[this.id];
+        let gpBase = layers[this.layer].getGPbase();
+
+        return `Generate Generator Tier 3, and multiply its gain by <h3>${format(
+          gpBase
+        )}</h3> per level-1.\n\nLevel: ${
+          player[this.layer].buyables[this.id] || 0
+        }\nCost: ${format(data.cost)} Points\nEffect: +${format(
+          data.effect
+        )} Tier 3 Powers/sec`;
+      },
+
+      canAfford() {
+        return player.points.gte(this.cost());
+      },
+
+      buy() {
+        let cost = this.cost();
+        if (!hasMilestone("b", 6)) {
+          player.points = player.points.sub(cost);
+        } else {
+        }
+        player.g.buyables[this.id] = getBuyableAmount(this.layer, this.id).add(
+          1
+        );
+      },
+
+      unlocked() {
+        return player.g.buyables[12].gte("10");
+      },
+    },
+    14: {
+      title: "Generator Tier IV",
+
+      cost(x) {
+        let level = new Decimal(
+          x !== undefined ? x : getBuyableAmount(this.layer, this.id)
+        );
+
+        let baseCost = new Decimal("1e20");
+        let baseLinear = new Decimal("1").add(level.times("1"));
+        let quadratic1 = new Decimal("1").add(level.times("0.01"));
+        let quadratic2 = new Decimal("1").add(level.times("0.0001"));
+        let quadratic3 = new Decimal("1").add(level.times("0.000002"));
+        let mult = baseLinear
+          .pow(level)
+          .times(new Decimal(quadratic1).pow(level.pow(2)))
+          .times(new Decimal(quadratic2).pow(level.pow(3)))
+          .times(new Decimal(quadratic3).pow(level.pow(4)));
+
+        return baseCost.times(mult);
+      },
+
+      effect(x) {
+        let level = new Decimal(
+          x !== undefined ? x : getBuyableAmount(this.layer, this.id)
+        );
+
+        if (level.lte(0)) return new Decimal("0");
+
+        let base = layers[this.layer].getGPbase();
+
+        let mult = new Decimal("1");
+        mult = mult.times(player.g.tier5.max("1"));
+        if (hasUpgrade("g", 33)) {
+          mult = mult.times(upgradeEffect("g", 33));
+        }
+        if (hasUpgrade("g", 14)) {
+          mult = mult.times(upgradeEffect("g", 14));
+        }
+        if (hasMilestone("b", 4)) {
+          mult = mult.times(tmp.b.effect.max("1"));
+        }
+        if (hasMilestone("b", 9)) {
+          mult = mult.times(layers.b.getSpeed().max("1"));
+        }
+
+        let eff = base.pow(level.sub(1)).times(mult);
+        return eff;
+      },
+
+      display() {
+        let data = temp[this.layer].buyables[this.id];
+        let gpBase = layers[this.layer].getGPbase();
+
+        return `Generate Generator Tier 4, and multiply its gain by <h3>${format(
+          gpBase
+        )}</h3> per level-1.\n\nLevel: ${
+          player[this.layer].buyables[this.id] || 0
+        }\nCost: ${format(data.cost)} Points\nEffect: +${format(
+          data.effect
+        )} Tier 4 Powers/sec`;
+      },
+
+      canAfford() {
+        return player.points.gte(this.cost());
+      },
+
+      buy() {
+        let cost = this.cost();
+        if (!hasMilestone("b", 6)) {
+          player.points = player.points.sub(cost);
+        } else {
+        }
+        player.g.buyables[this.id] = getBuyableAmount(this.layer, this.id).add(
+          1
+        );
+      },
+
+      unlocked() {
+        return player.g.buyables[13].gte("10");
+      },
+    },
+    15: {
+      title: "Generator Tier V",
+
+      cost(x) {
+        let level = new Decimal(
+          x !== undefined ? x : getBuyableAmount(this.layer, this.id)
+        );
+
+        let baseCost = new Decimal("1e67");
+        let baseLinear = new Decimal("1").add(level.times("2"));
+        let quadratic1 = new Decimal("1").add(level.times("0.05"));
+        let quadratic2 = new Decimal("1").add(level.times("0.0015"));
+        let quadratic3 = new Decimal("1").add(level.times("0.00001"));
+        let quadratic4 = new Decimal("1").add(level.times("0.000001"));
+        let mult = baseLinear
+          .pow(level)
+          .times(new Decimal(quadratic1).pow(level.pow(2)))
+          .times(new Decimal(quadratic2).pow(level.pow(3)))
+          .times(new Decimal(quadratic3).pow(level.pow(4)))
+          .times(new Decimal(quadratic4).pow(level.pow(5)));
+
+        return baseCost.times(mult);
+      },
+
+      effect(x) {
+        let level = new Decimal(
+          x !== undefined ? x : getBuyableAmount(this.layer, this.id)
+        );
+
+        if (level.lte(0)) return new Decimal("0");
+
+        let base = layers[this.layer].getGPbase();
+
+        let mult = new Decimal("1");
+        if (hasUpgrade("g", 33)) {
+          mult = mult.times(upgradeEffect("g", 33));
+        }
+        if (hasMilestone("b", 8)) {
+          mult = mult.times(tmp.b.effect.max("1"));
+        }
+
+        let eff = base.pow(level.sub(1)).times(mult);
+        return eff;
+      },
+
+      display() {
+        let data = temp[this.layer].buyables[this.id];
+        let gpBase = layers[this.layer].getGPbase();
+
+        return `Generate Generator Tier 5, and multiply its gain by <h3>${format(
+          gpBase
+        )}</h3> per level-1.\n\nLevel: ${
+          player[this.layer].buyables[this.id] || 0
+        }\nCost: ${format(data.cost)} Points\nEffect: +${format(
+          data.effect
+        )} Tier 5 Powers/sec`;
+      },
+
+      canAfford() {
+        return player.points.gte(this.cost());
+      },
+
+      buy() {
+        let cost = this.cost();
+        player.points = player.points.sub(cost);
+        player.g.buyables[this.id] = getBuyableAmount(this.layer, this.id).add(
+          1
+        );
+      },
+
+      unlocked() {
+        return player.g.buyables[14].gte("10") && hasMilestone("b", 5);
+      },
+    },
+  },
+
+  upgrades: {
+    11: {
+      title: "Start Generating",
+      description: "Generate 1 Base Generator Powers per second.",
+      cost: new Decimal("1"),
+      currencyInternalName: "points",
+      currencyDisplayName: "Points",
+      currencyLocation() {
+        return player;
+      },
+      effect() {
+        return new Decimal("1");
+      },
+      effectDisplay() {
+        return "+" + format(this.effect());
+      },
+      unlocked() {
+        return true || hasUpgrade(this.layer, this.id);
+      },
+    },
+    12: {
+      title: "Doubling",
+      description() {
+        return `Base Generator Powers gain +${format("1")}.`;
+      },
+      cost: new Decimal("20"),
+      currencyInternalName: "points",
+      currencyDisplayName: "Points",
+      currencyLocation() {
+        return player;
+      },
+      effect() {
+        return new Decimal("1");
+      },
+      effectDisplay() {
+        return "+" + format(this.effect());
+      },
+      unlocked() {
+        return hasUpgrade("g", 11) || hasUpgrade(this.layer, this.id);
+      },
+    },
+    13: {
+      title: "Synergy I",
+      getEffExp() {
+        let exp = new Decimal("1");
+        if (hasUpgrade("g", 31)) exp = exp.add("0.50");
+        if (hasUpgrade("g", 32)) exp = exp.add("1.00");
+        if (hasUpgrade("g", 34)) exp = exp.add("0.50");
+        return exp;
+      },
+      description() {
+        let exp = this.getEffExp();
+        return `Multiplier to GP based on log(Points)^${format(exp)} (floored)`;
+      },
+      cost: new Decimal("100"),
+      currencyInternalName: "points",
+      currencyDisplayName: "Points",
+      currencyLocation() {
+        return player;
+      },
+      effect() {
+        let base = player.points.max("10").log10();
+        let exp = this.getEffExp();
+        return base.pow(exp);
+      },
+      effectDisplay() {
+        return format(this.effect()) + "x";
+      },
+      unlocked() {
+        return hasUpgrade("g", 12) || hasUpgrade(this.layer, this.id);
+      },
+    },
+    14: {
+      title() {
+        return `Powered Generators Synergy`;
+      },
+      getEffExp() {
+        let exp = new Decimal("1").div("3");
+        return exp;
+      },
+      description() {
+        let exp = this.getEffExp();
+        return `Multiply the first 4 Generators based on log10(GP)^${format(
+          exp
+        )}.<br>Increase GP Effect Exponent by 0.05`;
+      },
+      cost: new Decimal("1e35"),
+      currencyInternalName: "points",
+      currencyDisplayName: "Points",
+      currencyLocation() {
+        return player;
+      },
+      effect() {
+        let exp = this.getEffExp();
+        return player.g.points.max("10").log10().pow(exp);
+      },
+      effectDisplay() {
+        return format(this.effect()) + "x";
+      },
+      unlocked() {
+        return (
+          (hasUpgrade("g", 13) &&
+            getBuyableAmount("g", 14).gte(10) &&
+            hasMilestone("b", 1)) ||
+          hasUpgrade(this.layer, this.id)
+        );
+      },
+    },
+    21: {
+      title: "Doubling Again",
+      description() {
+        return `Global Point gain mult ${format("2")}x.`;
+      },
+      cost: new Decimal("250"),
+      currencyInternalName: "points",
+      currencyDisplayName: "Points",
+      currencyLocation() {
+        return player;
+      },
+      effect() {
+        return new Decimal("2");
+      },
+      effectDisplay() {
+        return format(this.effect()) + "x";
+      },
+      unlocked() {
+        return hasUpgrade("g", 13) || hasUpgrade(this.layer, this.id);
+      },
+    },
+    22: {
+      title: "First Exponent",
+      description() {
+        return `Increase Generator Power gain exponent by 1 [only affects base GP gain].`;
+      },
+      tooltip() {
+        return `GP gain = (GP base gain^GP gain exp)*GP Mult.`;
+      },
+      cost: new Decimal("500"),
+      currencyInternalName: "points",
+      currencyDisplayName: "Points",
+      currencyLocation() {
+        return player;
+      },
+      effect() {
+        return new Decimal("1");
+      },
+      effectDisplay() {
+        return "+" + format(this.effect(), 3);
+      },
+      unlocked() {
+        return hasUpgrade("g", 21) || hasUpgrade(this.layer, this.id);
+      },
+    },
+    23: {
+      title() {
+        return hasUpgrade("g", 23)
+          ? `First <h2>TRUE</h2> Exponent`
+          : "First Exponent";
+      },
+      description() {
+        return `Increase Generator Power effect exponent by 0.10 and unlock a buyable.`;
+      },
+      cost: new Decimal("1000"),
+      currencyInternalName: "points",
+      currencyDisplayName: "Points",
+      currencyLocation() {
+        return player;
+      },
+      effect() {
+        return new Decimal("0.1");
+      },
+      effectDisplay() {
+        return "+" + format(this.effect(), 4);
+      },
+      unlocked() {
+        return hasUpgrade("g", 22) || hasUpgrade(this.layer, this.id);
+      },
+    },
+    24: {
+      title() {
+        return hasUpgrade("g", 24)
+          ? `Too <h2>MUCH</h2> Exponent`
+          : "Too ____ Exponent";
+      },
+      description() {
+        return `Increase Generator Power effect exponent by 0.05 (another +0.05 at 15 minutes of 'B' Time)<br>Increase 'Powered Generators' effect exponent by 0.05.`;
+      },
+      cost: new Decimal("4.646e46"),
+      currencyInternalName: "points",
+      currencyDisplayName: "Points",
+      currencyLocation() {
+        return player;
+      },
+      unlocked() {
+        return (
+          (hasUpgrade("g", 23) && player.g.buyables[11].gte(50)) ||
+          hasUpgrade(this.layer, this.id)
+        );
+      },
+    },
+    31: {
+      title() {
+        return `<h2>MORE</h2> Exponents`;
+      },
+      description() {
+        return `Increase Generator Power effect exponent by 0.05.<br>Increase 'Synergy I' Exponent by 0.50.`;
+      },
+      cost: new Decimal("1e13"),
+      currencyInternalName: "points",
+      currencyDisplayName: "Points",
+      currencyLocation() {
+        return player;
+      },
+      unlocked() {
+        return (
+          (hasUpgrade("g", 23) && player.g.buyables[11].gte(20)) ||
+          hasUpgrade(this.layer, this.id)
+        );
+      },
+    },
+    32: {
+      title() {
+        return `Even <h2>MORE</h2> Exponents`;
+      },
+      description() {
+        return `Increase Generator Power effect exponent by 0.05 again.<br>Increase 'Synergy I' Exponent by 1.00.`;
+      },
+      cost: new Decimal("1e20"),
+      currencyInternalName: "points",
+      currencyDisplayName: "Points",
+      currencyLocation() {
+        return player;
+      },
+      unlocked() {
+        return (
+          (hasUpgrade("g", 31) && player.g.buyables[14].gte(1)) ||
+          hasUpgrade(this.layer, this.id)
+        );
+      },
+    },
+    33: {
+      title() {
+        return `Powered Generators`;
+      },
+      getEffExp() {
+        let exp = new Decimal("0.20");
+        if (hasUpgrade("g", 24)) exp = exp.add("0.05");
+        return exp;
+      },
+      description() {
+        let exp = this.getEffExp();
+        return `Multiply All Generators based on log10(Points)^${format(
+          exp
+        )}.<br>Increase Generator Power effect exponent by 0.05 <h3>YET again</h3><br>Unlock the second layer.`;
+      },
+      cost: new Decimal("1e28"),
+      currencyInternalName: "points",
+      currencyDisplayName: "Points",
+      currencyLocation() {
+        return player;
+      },
+      effect() {
+        let exp = this.getEffExp();
+        return player.points.max("10").log10().pow(exp);
+      },
+      effectDisplay() {
+        return format(this.effect()) + "x";
+      },
+      unlocked() {
+        return (
+          (hasUpgrade("g", 32) && getBuyableAmount("g", 14).gte(8)) ||
+          hasUpgrade(this.layer, this.id)
+        );
+      },
+    },
+    34: {
+      title() {
+        return `Exponent Plus`;
+      },
+      description() {
+        return `Increase Generator Power effect exponent by 0.10.<br>Increase 'Synergy I' Exponent by 0.50.`;
+      },
+      cost: new Decimal("7.777e77"),
+      currencyInternalName: "points",
+      currencyDisplayName: "Points",
+      currencyLocation() {
+        return player;
+      },
+      unlocked() {
+        return (
+          (hasUpgrade("g", 33) && player.b.points.gte(6)) ||
+          hasUpgrade(this.layer, this.id)
+        );
+      },
+    },
+  },
+
+  tabFormat: {
+    Main: {
+      unlocked() {
+        return hasUpgrade("g", 23);
+      },
+      content: [
+        [
+          "raw-html",
+          function () {
+            return `You have <h2 style="color: cyan; text-shadow: 0px 0px 10px cyan">${format(
+              player.points
+            )}</h2> Points`;
+          },
+        ],
+        "blank",
+        "main-display",
+        [
+          "raw-html",
+          function () {
+            // Fixed: Removed duplicate text that was causing visual clutter
+            return `You are gaining <h2 style="color: lime; text-shadow: 0px 0px 10px lime">${formatWhole(
+              tmp.g.resetGain
+            )}</h2> Generator Powers/s.`;
+          },
+        ],
+        "blank",
+        "upgrades",
+      ],
+    },
+    Generators: {
+      unlocked() {
+        return hasUpgrade("g", 23);
+      },
+      content: [
+        [
+          "raw-html",
+          function () {
+            return `You have <h2 style="color: cyan; text-shadow: 0px 0px 10px cyan">${format(
+              player.points
+            )}</h2> Points`;
+          },
+        ],
+        "blank",
+        "main-display",
+        [
+          "raw-html",
+          function () {
+            return `You are gaining <h2 style="color: lime; text-shadow: 0px 0px 10px lime">${formatWhole(
+              tmp.g.resetGain
+            )}</h2> Generator Powers/s.`;
+          },
+        ],
+        "blank",
+        [
+          "raw-html",
+          function () {
+            // Fixed: Safe check prevents crashing layer rendering
+            if (player.g.tier1.lte(0)) {
+              return "";
+            } else {
+              return `You have <h2 style="color: yellow; text-shadow: 0px 0px 10px yellow">${format(
+                player.g.tier1
+              )}</h2> Generator Tier 1s, which DIRECTLY boost Generator Powers gain.`;
             }
-            if (hasUpgrade("c1", 23)) {
-                exp = exp.add("0.1")
+          },
+        ],
+        [
+          "raw-html",
+          function () {
+            // Fixed: Safe check prevents crashing layer rendering
+            if (player.g.tier2.lte(0)) {
+              return "";
+            } else {
+              return `You have <h2 style="color: orange; text-shadow: 0px 0px 10px orange">${format(
+                player.g.tier2
+              )}</h2> Generator Tier 2s, which DIRECTLY boost Generator Tier 1 gain.`;
             }
-            if (hasUpgrade("c1", 24)) {
-                exp = exp.add("0.1")
+          },
+        ],
+        [
+          "raw-html",
+          function () {
+            // Fixed: Safe check prevents crashing layer rendering
+            if (player.g.tier3.lte(0)) {
+              return "";
+            } else {
+              return `You have <h2 style="color: red; text-shadow: 0px 0px 10px red">${format(
+                player.g.tier3
+              )}</h2> Generator Tier 3s, which DIRECTLY boost Generator Tier 2 gain.`;
             }
-        }
-        if (hasUpgrade("c1", 33)) {
-            exp = exp.add("0.1")
-        }
-        if (player.c1.buyables[12].gte("1")) {
-		    exp = exp.add(buyableEffect("c1", 12))
-	    }
-        if (hasUpgrade("c1", 53)) {
-		    exp = exp.times(upgradeEffect("c1", 53))
-	    }
-        if (hasUpgrade("c1", 54)) {
-		    exp = exp.times(upgradeEffect("c1", 54))
-	    }
-        if (exp.gte(new Decimal("1000").tetrate("1000"))) {
-		    exp = new Decimal("1000").tetrate("1000")
-	    }
-        return exp
+          },
+        ],
+        [
+          "raw-html",
+          function () {
+            // Fixed: Safe check prevents crashing layer rendering
+            if (player.g.tier4.lte(0)) {
+              return "";
+            } else {
+              return `You have <h2 style="color: pink; text-shadow: 0px 0px 10px pink">${format(
+                player.g.tier4
+              )}</h2> Generator Tier 4s, which DIRECTLY boost Generator Tier 3 gain.`;
+            }
+          },
+        ],
+        [
+          "raw-html",
+          function () {
+            // Safe check using player.g.tier5 directly since buyable 15 isn't defined yet
+            if (player.g.tier5.lte(0)) {
+              return "";
+            } else {
+              return `You have <h2 style="color: magenta; text-shadow: 0px 0px 10px magenta">${format(
+                player.g.tier5
+              )}</h2> Generator Tier 5s, which DIRECTLY boost Generator Tier 4 gain.`;
+            }
+          },
+        ],
+        "blank",
+        "buyables",
+      ],
     },
-    layerShown(){
-        return hasUpgrade("n1", 41)
-    },
-    passiveGeneration() {
-        let gen = new Decimal("0")
-        if (hasUpgrade("n1", 41)) {
-            gen = gen.add(1)
-        }
-        return gen
-    },
-    upgrades: {
-        11: {
-            title() {
-                return `0.99`
-            },
-            description() {
-                return `<b>Googology points</b> now multiplies Cycle 1 Points gain at a same rate.`
-            },
-            cost() {
-                let cost = new Decimal("10")
-                return cost
-            },
-            effect() {
-                let eff1 = player.points.max(1);
-                let exp = new Decimal("1");
-                if (hasUpgrade("c1", 14)) {
-                    exp = exp.times("2")
-                }
-                if (hasUpgrade("c1", 22)) {
-                    exp = exp.times(upgradeEffect("c1", 22))
-                }
-                if (hasUpgrade("c1", 23)) {
-                    exp = exp.times(upgradeEffect("c1", 23))
-                }
-                let final = eff1.pow(exp);
-                return final;
-            },
-            effectDisplay() {
-                let eff = upgradeEffect(this.layer, this.id);
-                return format(eff, 3) + "x"; // Formats the number nicely using TMT's built-in formatter
-            },
-            unlocked() {
-                return hasUpgrade("n1", 41)
-            },
-        },
-        12: {
-            title() {
-                return `0.999`
-            },
-            description() {
-                return `<b>Small Numbers</b> multiplies Cycle 1 Points gain.`
-            },
-            cost() {
-                let cost = new Decimal("2000")
-                return cost
-            },
-            effect() {
-                let eff1 = player.n1.points.max(1);
-                let exp = new Decimal("0.5")
-                if (hasUpgrade("c1", 14)) {
-                    exp = exp.times("2")
-                }
-                if (hasUpgrade("c1", 22)) {
-                    exp = exp.times(upgradeEffect("c1", 22))
-                }
-                if (hasUpgrade("c1", 23)) {
-                    exp = exp.times(upgradeEffect("c1", 23))
-                }
-                let final = eff1.pow(exp)
-                return final;
-            },
-            effectDisplay() {
-                let eff = upgradeEffect(this.layer, this.id);
-                return format(eff, 3) + "x"; // Formats the number nicely using TMT's built-in formatter
-            },
-            unlocked() {
-                return hasUpgrade("c1", 11)
-            },
-        },
-        13: {
-            title() {
-                return `0.9999`
-            },
-            description() {
-                return `Cycle 1 gain is multiplied by <b>Best Cycle 1 Points^0.1</b>, max at 1.80e308x`
-            },
-            cost() {
-                let cost = new Decimal("500000")
-                return cost
-            },
-            effect() {
-                let eff1 = player.c1.best.max(1);
-                let exp = new Decimal("0.1")
-                if (hasUpgrade("c1", 14)) {
-                    exp = exp.times("2")
-                }
-                if (hasUpgrade("c1", 51)) {
-                    exp = exp.times(upgradeEffect("c1", 22))
-                    exp = exp.times(upgradeEffect("c1", 23))
-                }
-                let final = eff1.pow(exp)
-                let max = new Decimal("1.8e308")
-                if (hasUpgrade("c1", 41)) {
-                    max = max.times("5.555e691")
-                }
-                if (hasUpgrade("c1", 42)) {
-                    max = max.pow("5")
-                }
-                if (hasUpgrade("c1", 51)) {
-                    max = new Decimal("e1e15000")
-                }
-                if (final.gte(max)) {
-                    return new Decimal(max)
-                }else{
-                    return final;
-                }
-            },
-            effectDisplay() {
-                let eff = upgradeEffect(this.layer, this.id);
-                return format(eff, 3) + "x"; // Formats the number nicely using TMT's built-in formatter
-            },
-            unlocked() {
-                return hasUpgrade("c1", 12)
-            },
-        },
-        14: {
-            title() {
-                return `0.99999`
-            },
-            description() {
-                return `Square the previous 3 cycle 1 upgrades effect.`
-            },
-            cost() {
-                let cost = new Decimal("2000000")
-                return cost
-            },
-            unlocked() {
-                return hasUpgrade("c1", 13)
-            },
-        },
-        21: {
-            title() {
-                return `0.9<-x5->9`
-            },
-            description() {
-                return `Googology Point gain x2, and Cycle 1 Point gain exponent +0.10 per upgrade in this row.`
-            },
-            cost() {
-                let cost = new Decimal("3.33e13")
-                return cost
-            },
-            unlocked() {
-                return hasUpgrade("c1", 14)
-            },
-        },
-        22: {
-            title() {
-                return `0.9<-x10->9`
-            },
-            description() {
-                return `Make Cycle Upgrade 1 and 2 effect to be raised based on Googology points.`
-            },
-            cost() {
-                let cost = new Decimal("1e16")
-                return cost
-            },
-            effect() {
-                let exp = new Decimal("0.5")
-                if (hasUpgrade("c1", 41)) {
-                    exp = exp.times("1.5")
-                }
-                if (hasUpgrade("c1", 43)) {
-                    exp = exp.times("1.2")
-                }
-                let eff = player.points.max(1).log10().pow(exp).add(1);
-                return eff;
-            },
-            effectDisplay() {
-                let eff = upgradeEffect(this.layer, this.id);
-                return "^" + format(eff, 4); // Formats the number nicely using TMT's built-in formatter
-            },
-            unlocked() {
-                return hasUpgrade("c1", 21)
-            },
-        },
-        23: {
-            title() {
-                return `0.9<-x20->9`
-            },
-            description() {
-                return `Make Cycle Upgrade 1 and 2 effect to be raised based on Best Small Numbers.`
-            },
-            cost() {
-                let cost = new Decimal("5.2e52")
-                return cost
-            },
-            effect() {
-                let exp = new Decimal("0.25")
-                if (hasUpgrade("c1", 41)) {
-                    exp = exp.times("1.5")
-                }
-                if (hasUpgrade("c1", 43)) {
-                    exp = exp.times("1.2")
-                }
-                let eff = player.n1.best.max(1).log10().pow(exp).add(1);
-                return eff;
-            },
-            effectDisplay() {
-                let eff = upgradeEffect(this.layer, this.id);
-                return "^" + format(eff, 4); // Formats the number nicely using TMT's built-in formatter
-            },
-            unlocked() {
-                return hasUpgrade("c1", 22)
-            },
-        },
-        24: {
-            title() {
-                return `0.9<-x50->9`
-            },
-            description() {
-                return `Raise Cycle Upgrade 3 effect to a 1.5th power and unlock a buyable.`
-            },
-            cost() {
-                let cost = new Decimal("1e160")
-                return cost
-            },
-            unlocked() {
-                return hasUpgrade("c1", 23)
-            },
-        },
-        31: {
-            title() {
-                return `0.9<-x100->9`
-            },
-            description() {
-                return `Square-root base cost of Cycle Acceleration I [Base cost is 1e175]`
-            },
-            cost() {
-                let cost = new Decimal("1e300")
-                return cost
-            },
-            unlocked() {
-                return hasUpgrade("c1", 24)
-            },
-        },
-        32: {
-            title() {
-                return `0.9<-x200->9`
-            },
-            description() {
-                return `Cycle Acceleration I effect base is increased by 1 per Cycle Acceleration I levels.`
-            },
-            cost() {
-                let cost = new Decimal("1e360")
-                return cost
-            },
-            unlocked() {
-                return hasUpgrade("c1", 31)
-            },
-        },
-        33: {
-            title() {
-                return `0.9<-x500->9`
-            },
-            description() {
-                return `Cycle 1 Points gain exponent is increased by 0.10 and Googology point gain x1.50.`
-            },
-            cost() {
-                let cost = new Decimal("9e725")
-                return cost
-            },
-            unlocked() {
-                return hasUpgrade("c1", 32)
-            },
-        },
-        34: {
-            title() {
-                return `0.9<-x1,000->9`
-            },
-            description() {
-                return `Cycle Acceration 1 cost scaling is slower and unlock a new buyable.`
-            },
-            cost() {
-                let cost = new Decimal("8.888e888")
-                return cost
-            },
-            unlocked() {
-                return hasUpgrade("c1", 33)
-            },
-        },
-        41: {
-            title() {
-                return `0.999<br><-x10,000-><br>999`
-            },
-            description() {
-                return `Cycle Upgrade 3 hardcap starts 5.555e691x later, strengthen Cycle Upgrade SIX-SEVEN effect by ^1.50.`
-            },
-            cost() {
-                let cost = new Decimal("1e2230")
-                return cost
-            },
-            unlocked() {
-                return hasUpgrade("c1", 34)
-            },
-        },
-        42: {
-            title() {
-                return `0.999<br><-x100,000-><br>999`
-            },
-            description() {
-                return `Cycle Upgrade 3 hardcap starts ^5 later, and Cycle Upgrade 1 effect divides Cycle Acceration I and II base cost.`
-            },
-            cost() {
-                let cost = new Decimal("4e5667")
-                return cost
-            },
-            unlocked() {
-                return hasUpgrade("c1", 41)
-            },
-        },
-        43: {
-            title() {
-                return `0.999<br><-x1e6-><br>999`
-            },
-            description() {
-                return `Raise Cycle Upgrade 6 and 7 effect by ^1.2, and Cycle Acceration I scaling is slower.`
-            },
-            cost() {
-                let cost = new Decimal("3e13131")
-                return cost
-            },
-            unlocked() {
-                return hasUpgrade("c1", 42)
-            },
-        },
-        44: {
-            title() {
-                return `0.999<br><-x1e10-><br>999`
-            },
-            description() {
-                return `Cycle Acceration II level increase its base effect by 0.0001. Unlock a new buyable.`
-            },
-            cost() {
-                let cost = new Decimal("3e25775")
-                return cost
-            },
-            unlocked() {
-                return hasUpgrade("c1", 43)
-            },
-        },
-        51: {
-            title() {
-                return `0.999<br><-x1e100-><br>999`
-            },
-            description() {
-                return `Cycle Upgrade 3 effect hardcap is now e1e15000.`
-            },
-            cost() {
-                let cost = new Decimal("e16728500000")
-                return cost
-            },
-            unlocked() {
-                return hasUpgrade("c1", 44)
-            },
-        },
-        52: {
-            title() {
-                return `0.999<br><-e1000-><br>999`
-            },
-            description() {
-                return `Cycle Upgrade 3 effect is now affected by Cycle Upgrade 6 and 7.`
-            },
-            cost() {
-                let cost = new Decimal("e5e5000")
-                return cost
-            },
-            unlocked() {
-                return hasUpgrade("c1", 51)
-            },
-        },
-        53: {
-            title() {
-                return `0.999<br><-e10000-><br>999`
-            },
-            description() {
-                return `Multiply cycle 1 point gain exponent by best cycle 1 points.`
-            },
-            cost() {
-                let cost = new Decimal("100e1.168e15006")
-                return cost
-            },
-            effect() {
-                let eff1 = player.c1.points.max(1).log10();
-                let exp = new Decimal("1")
-                let final = eff1.pow(exp)
-                return final;
-            },
-            effectDisplay() {
-                let eff = upgradeEffect(this.layer, this.id);
-                return format(eff, 3) + "x"; // Formats the number nicely using TMT's built-in formatter
-            },
-            unlocked() {
-                return hasUpgrade("c1", 52)
-            },
-        },
-        54: {
-            title() {
-                return `0.999<br><-e1e10-><br>999`
-            },
-            description() {
-                return `Cycle 1 point gain exponent by best cycle 1 points again!`
-            },
-            cost() {
-                let cost = new Decimal("ee1e7")
-                return cost
-            },
-            effect() {
-                let eff1 = player.c1.points.max(1);
-                let exp = new Decimal("1")
-                let final = eff1.pow(exp)
-                return final;
-            },
-            effectDisplay() {
-                let eff = upgradeEffect(this.layer, this.id);
-                return "x" + format(eff, 3); // Formats the number nicely using TMT's built-in formatter
-            },
-            unlocked() {
-                return hasUpgrade("c1", 53)
-            },
-        },
-    },
-    buyables: {
-        11: {
-            title: "Cycle Acceration I",
-            cost(x) {
-                let basecost = new Decimal("1e175")
-                if (hasUpgrade("c1", 31)) {
-                    basecost = basecost.pow("0.5")
-                }
-                if (hasUpgrade("c1", 42)) {
-                    basecost = basecost.div(upgradeEffect("c1", 11))
-                }
-                let basescale = new Decimal("1.1")
-                if (hasUpgrade("c1", 34)) {
-                    basescale = basescale.pow("0.9")
-                }
-                if (hasUpgrade("c1", 43)) {
-                    basescale = basescale.pow("0.9")
-                }
-                let scaling = new Decimal(basescale).pow(x.pow(2));
-                return new Decimal(basecost).times(scaling);
-            },
-            effect(x) {
-                let base = new Decimal("10")
-                if (hasUpgrade("c1", 32)) {
-                    base = base.add(player.c1.buyables[11])
-                }
-                let free = player.c1.buyables[12].add(player.c1.buyables[13])
-                let total = x.add(free)
-                return new Decimal(base).pow(total);
-            },
-            display() {
-                let data = tmp[this.layer].buyables[this.id];
-                let free = player[this.layer].buyables[12];
-                let total = player[this.layer].buyables[this.id].add(free);
-                return `Multiply Cycle 1 Points gain by <b>10x</b> per level.<br><br>
-                Cost: ${format(data.cost)} Cycle 1 Points<br>
-                Level: ${formatWhole(player.c1.buyables[11])} + ${formatWhole(free)}<br>
-                Effect: ${format(data.effect)}x`;
-            },
-            canAfford() {
-                let cap = new Decimal("1000")
-                return player[this.layer].points.gte(this.cost()) && player.c1.buyables[11].lt(cap);
-            },
-            buy() {
-                let cost = this.cost();
-                player[this.layer].points = player[this.layer].points.sub(cost);
-                player[this.layer].buyables[this.id] = player[this.layer].buyables[this.id].add(1);
-            },
-            unlocked() {
-                return hasUpgrade("c1", 24);
-            },
-        },
-        12: {
-            title: "Cycle Acceration II",
-            cost(x) {
-                let basecost = new Decimal("1e1000");
-                if (hasUpgrade("c1", 42)) {
-                    basecost = basecost.div(upgradeEffect("c1", 11))
-                }
-                let term1 = new Decimal("2").pow(x.pow(2));
-                let term2 = new Decimal("1.01").pow(x.pow(3));
-                return basecost.times(term1).times(term2);
-            },
-            effect(x) {
-                let eff = new Decimal("0.01")
-                if (hasUpgrade("c1", 44)) {
-                    eff = eff.add(player.c1.buyables[12].times("0.0001"))
-                }
-                let free = new Decimal("0")
-                let total = x.add(free)
-                return total.times(eff);
-            },
-            display() {
-                let data = tmp[this.layer].buyables[this.id];
-                let free = player.c1.buyables[13]
-                let total = player[this.layer].buyables[this.id].add(free);
-                return `Increase Cycle 1 Points exponent by <b>+0.01</b> per level.<br><br>
-                Cost: ${format(data.cost)} Cycle 1 Points<br>
-                Level: ${formatWhole(player.c1.buyables[12])} + ${formatWhole(free)}<br>
-                Effect: +${format(data.effect, 2)}`;
-            },
-            canAfford() {
-                let cap = new Decimal("1000")
-                return player[this.layer].points.gte(this.cost()) && player.c1.buyables[12].lt(cap);
-            },
-            buy() {
-                let cost = this.cost();
-                player[this.layer].points = player[this.layer].points.sub(cost);
-                player[this.layer].buyables[this.id] = player[this.layer].buyables[this.id].add(1);
-            },
-            unlocked() {
-                return hasUpgrade("c1", 34);
-            },
-        },
-        13: {
-            title: "Cycle Acceration III",
-            cost(x) {
-                let basecost = new Decimal("1e101000");
-                let term1 = new Decimal("3").pow(x.pow(2));
-                let term2 = new Decimal("1.21").pow(x.pow(3));
-                let term3 = new Decimal("1.003").pow(x.pow(4));
-                return basecost.times(term1).times(term2).times(term3);
-            },
-            effect(x) {
-                let base = new Decimal("1.01")
-                return new Decimal(base).pow(x);
-            },
-            display() {
-                let data = tmp[this.layer].buyables[this.id];
-                let free = new Decimal("0");
-                let total = player[this.layer].buyables[this.id].add(free);
-                return `Raise Cycle 1 Points gain to <b>1.01</b> per level.<br><br>
-                Cost: ${format(data.cost)} Cycle 1 Points<br>
-                Level: ${formatWhole(player.c1.buyables[13])} + ${formatWhole(free)}<br>
-                Effect: ^${format(data.effect, 4)}`;
-            },
-            canAfford() {
-                let cap = new Decimal("1000");
-                return player[this.layer].points.gte(this.cost()) && player.c1.buyables[13].lt(cap);
-            },
-            buy() {
-                let cost = this.cost();
-                player[this.layer].points = player[this.layer].points.sub(cost);
-                player[this.layer].buyables[this.id] = player[this.layer].buyables[this.id].add(1);
-            },
-            unlocked() {
-                return hasUpgrade("c1", 44);
-            },
-        },
-    },
-    tabFormat: {
-        "Main": {
-            content: [
-                ["display-text", function() { 
-                    let points = player.points;
-                    return `Googology Points: <h2 style="color: #ffffff; text-shadow: 0 0 10px #ffffff, 0 0 20px #ffffff;">${format(points)}</h2>`; 
-                }],
-                
-                // Hide prestige button when upgrade 41 is bought
-                "main-display",
-                
-                // Working Gain Tracker Text
-                ["display-text", function() {
-                    if (hasUpgrade("n1", 41)) {
-                        let gen = new Decimal("1")
-                        let gain = tmp.c1.resetGain.times(gen); 
-                        return `You are earning <h2 style="color: #ffffff; text-shadow: 0 0 10px #ffffff, 0 0 20px #ffffff;">${format(gain)}</h2> Cycle 1 Points per second`;
-                    }
-                    return "";
-                }],
-                
-                "blank",
-                
-                ["display-text", function() { 
-                    let best = player.c1.best;
-                    return `Best Cycle 1 Points: <h2 style="color: #ffffff; text-shadow: 0 0 10px #ffffff, 0 0 20px #ffffff;">${format(best)}</h2>`; 
-                }],
-                
-                "upgrades",
-                "buyables",
-            ]
-        },
-    },
-})
-addLayer("n1", {
-    name: "Layer 1", // This is optional, only used in a few places, If absent it just uses the layer id.
-    symbol: "1", // This appears on the layer's node. Default is the id with the first letter capitalized
-    position: 0, // Horizontal position within a row. By default it uses the layer id and sorts in alphabetical order
-    startData() { return {
-        unlocked: true,
-		points: new Decimal(0),
-        best: new Decimal(0),
-    }},
-    tooltip: "Layer 1: Less than 1",
-    color: "#ff0000",
-    requires: new Decimal(1), // Can be a function that takes requirement increases into account
-    resource: "Small Numbers", // Name of prestige currency
-    baseResource: "googology points", // Name of resource prestige is based on
-    baseAmount() {return player.points}, // Get the current amount of baseResource
-    type: "normal", // normal: cost to gain currency depends on amount gained. static: cost depends on how much you already have
-    exponent() {
-        let baseexp = new Decimal("0.5") // Prestige currency exponent
-        return baseexp
-    },
-    gainMult() { // Calculate the multiplier for main currency from bonuses
-        mult = new Decimal(1)
-        if (hasUpgrade("n1", 21)) {
-		    mult = mult.times(upgradeEffect("n1", 21))
-	    }
-        if (hasUpgrade("n1", 22)) {
-		    mult = mult.times(upgradeEffect("n1", 22))
-	    }
-        if (hasUpgrade("n1", 23)) {
-		    mult = mult.times(upgradeEffect("n1", 23))
-	    }
-        if (hasUpgrade("n1", 31)) {
-		    mult = mult.times(upgradeEffect("n1", 31))
-	    }
-        if (hasUpgrade("n1", 33)) {
-		    mult = mult.times(upgradeEffect("n1", 33))
-	    }
-        if (hasMilestone("n1", 1)) {
-		    mult = mult.times("3")
-	    }
-        return mult
-    },
-    gainExp() { // Calculate the exponent on main currency from bonuses
-        let exp = new Decimal("1")
+  },
+});
+addLayer("b", {
+  name: "boosters",
+  symbol: "B",
+  position: 1,
+  row: 0,
 
-        if (hasUpgrade("n1", 32)) {
-            exp = exp.add(upgradeEffect("n1", 32))
-        }
+  startData() {
+    return {
+      unlocked: true,
+      points: new Decimal(0),
+      time: new Decimal(0),
+    };
+  },
 
-        return exp
-    },
-    row: 1, // Row the layer is in on the tree (0 is the first row)
-    layerShown(){
-        return true
-    },
-    passiveGeneration() {
-        let gen = new Decimal("0")
+  getSpeed() {
+    let speed = new Decimal("1");
+    if (hasMilestone("b", 3))
+      speed = speed.add(new Decimal("0.25").times(player.b.points));
+    return speed;
+  },
 
-        if (hasUpgrade("n1", 41)) {
-            gen = gen.add("0.01")
-        }
+  update(diff) {
+    let tick = layers.b.getSpeed();
+    player.b.time = player.b.time.add(tick.times(diff));
+  },
 
-        return gen
+  color: "blue",
+  requires: new Decimal(1e42),
+  resource: "Boosters",
+  baseResource: "XP",
+
+  getfactorpointexp() {
+    let exp = new Decimal("0");
+    if (hasMilestone("b", 8)) {
+      exp = exp.add("1");
+    }
+    return exp;
+  },
+
+  getfactorGPexp() {
+    let exp = new Decimal("1");
+    if (hasMilestone("b", 8)) {
+      exp = exp.div("20");
+    }
+    return exp;
+  },
+
+  baseAmount() {
+    let factor1 = player.g.points.pow(layers.b.getfactorGPexp());
+    let factor2 = player.points.pow(layers.b.getfactorpointexp());
+    let total = factor1.times(factor2);
+    return total;
+  },
+
+  type: "static",
+  branches: ["g"],
+  base() {
+    if (player.b.points.gte("100")) {
+      return new Decimal("1.80e308");
+    } else if (player.b.points.gte("50")) {
+      return new Decimal("1e100");
+    } else if (player.b.points.gte("10")) {
+      return new Decimal("1e20");
+    } else {
+      return new Decimal("1e8");
+    }
+  },
+
+  exponent() {
+    if (player.b.points.gte("120")) {
+      return new Decimal("2");
+    } else if (player.b.points.gte("80")) {
+      return new Decimal("1.7");
+    } else if (player.b.points.gte("60")) {
+      return new Decimal("1.5");
+    } else if (player.b.points.gte("40")) {
+      return new Decimal("1.3");
+    } else if (player.b.points.gte("30")) {
+      return new Decimal("1.2");
+    } else if (player.b.points.gte("20")) {
+      return new Decimal("1.1");
+    } else if (player.b.points.gte("15")) {
+      return new Decimal("1.05");
+    } else if (player.b.points.gte("6")) {
+      return new Decimal("1.02");
+    } else {
+      return new Decimal("1");
+    }
+  },
+
+  layerShown() {
+    return hasUpgrade("g", 33);
+  },
+
+  getBaseEff() {
+    let base = new Decimal("2.5");
+    return base;
+  },
+
+  effect() {
+    let base = this.getBaseEff();
+    let eff = base.pow(player.b.points).max("1");
+    return eff;
+  },
+
+  effectDescription() {
+    return `which boost Generator Power gain by <h2 style="color: lime; text-shadow: 0px 0px 10px lime">${format(
+      this.effect()
+    )}x</h2><br>Your base effect is <h3 style="color: blue; text-shadow: 0px 0px 10px blue">${format(
+      this.getBaseEff()
+    )}</h3>`;
+  },
+
+  onPrestige(gain) {
+    player.g.points = new Decimal(0);
+    player.g.tier1 = new Decimal(0);
+    player.g.tier2 = new Decimal(0);
+    player.g.tier3 = new Decimal(0);
+    player.g.tier4 = new Decimal(0);
+    player.g.tier5 = new Decimal(0);
+    player.g.tier6 = new Decimal(0);
+    player.g.tier7 = new Decimal(0);
+    player.g.tier8 = new Decimal(0);
+    player.g.tier9 = new Decimal(0);
+    player.g.tier10 = new Decimal(0);
+    player.g.buyables[11] = new Decimal("0");
+    player.g.buyables[12] = new Decimal("0");
+    player.g.buyables[13] = new Decimal("0");
+    player.g.buyables[14] = new Decimal("0");
+    player.g.buyables[15] = new Decimal("0");
+    player.g.buyables[21] = new Decimal("0");
+    player.g.buyables[22] = new Decimal("0");
+    player.g.buyables[23] = new Decimal("0");
+    player.g.buyables[24] = new Decimal("0");
+    player.g.buyables[25] = new Decimal("0");
+    player.b.time = new Decimal(0);
+  },
+
+  getTargetTimeeff1() {
+    let target = new Decimal("60").times("15");
+    return target;
+  },
+  getTimeexp1() {
+    let exp = new Decimal("0.50");
+    return exp;
+  },
+  getTimeeff1() {
+    let time = player.b.time
+      .minus(layers.b.getTargetTimeeff1().minus("1"))
+      .max("0");
+    let exp = layers.b.getTimeexp1();
+    let total = time.pow(exp);
+    return total.max("1");
+  },
+
+  milestones: {
+    1: {
+      requirementDescription: "1 Boosters",
+      effectDescription:
+        "Boosters effect now affects Generator Tier 1s gain.<br>Unlock column 4 of Main Generator Upgrades at 10 of G4, 50 of G1, and 6 Boosters.",
+      done() {
+        return player.b.points.gte(1);
+      },
     },
-    upgrades: {
-        11: {
-            title() {
-                return `1/100`
-            },
-            description() {
-                return `Multiply Googology Points gain by <b>2.000</b>`
-            },
-            cost() {
-                let cost = new Decimal("1")
-                return cost
-            },
-            unlocked() {
-                return true
-            },
-        },
-        12: {
-            title() {
-                return `1/50`
-            },
-            description() {
-                return `Multiply Googology point gain based on <b>itself</b>, min is <b>1.500</b>`
-            },
-            cost() {
-                let cost = new Decimal("2")
-                return cost
-            },
-            effect() {
-                // .max(1) ensures player.points is at least 1, preventing NaN/Infinity errors at 0 points
-                let eff = player.points.max(1).log10().add(1.5);
-                return eff;
-            },
-            effectDisplay() {
-                let eff = upgradeEffect(this.layer, this.id);
-                return format(eff, 3) + "x"; // Formats the number nicely using TMT's built-in formatter
-            },
-            unlocked() {
-                return hasUpgrade("n1", 11)
-            },
-        },
-        13: {
-            title() {
-                return `1/33.333`
-            },
-            description() {
-                return `<b>Best Small Numbers</b> multiplies googology points gain, min is <b>1.200</b>`
-            },
-            tooltip() {
-                return `Note that it is rounded to the nearest 3 decimal number`
-            },
-            cost() {
-                let cost = new Decimal("5")
-                return cost
-            },
-            effect() {
-                // .max(1) ensures player.points is at least 1, preventing NaN/Infinity errors at 0 points
-                let eff = player.n1.best.max(1).log10().add(1.2);
-                return eff;
-            },
-            effectDisplay() {
-                let eff = upgradeEffect(this.layer, this.id);
-                return format(eff, 3) + "x"; // Formats the number nicely using TMT's built-in formatter
-            },
-            unlocked() {
-                return hasUpgrade("n1", 12)
-            },
-        },
-        21: {
-            title() {
-                return `1/20`
-            },
-            description() {
-                return `Multiply Small Numbers gain <b>1.100x</b>`
-            },
-            cost() {
-                let cost = new Decimal("10")
-                return cost
-            },
-            effect() {
-                let eff = new Decimal("1.1");
-                return eff;
-            },
-            effectDisplay() {
-                let eff = upgradeEffect(this.layer, this.id);
-                return format(eff, 3) + "x"; // Formats the number nicely using TMT's built-in formatter
-            },
-            unlocked() {
-                return hasUpgrade("n1", 13)
-            },
-        },
-        22: {
-            title() {
-                return `1/10`
-            },
-            description() {
-                return `Multiply Small Numbers gain <b>1.150x</b>`
-            },
-            cost() {
-                let cost = new Decimal("15")
-                return cost
-            },
-            effect() {
-                let eff = new Decimal("1.15");
-                return eff;
-            },
-            effectDisplay() {
-                let eff = upgradeEffect(this.layer, this.id);
-                return format(eff, 3) + "x"; // Formats the number nicely using TMT's built-in formatter
-            },
-            unlocked() {
-                return hasUpgrade("n1", 21)
-            },
-        },
-        23: {
-            title() {
-                return `1/6`
-            },
-            description() {
-                return `Multiply Small Numbers gain <b>1.200x</b>`
-            },
-            cost() {
-                let cost = new Decimal("20")
-                return cost
-            },
-            effect() {
-                let eff = new Decimal("1.2");
-                return eff;
-            },
-            effectDisplay() {
-                let eff = upgradeEffect(this.layer, this.id);
-                return format(eff, 3) + "x"; // Formats the number nicely using TMT's built-in formatter
-            },
-            unlocked() {
-                return hasUpgrade("n1", 22)
-            },
-        },
-        31: {
-            title() {
-                return `1/4`
-            },
-            description() {
-                return `<b>Googology Points</b> multiplies Small Numbers gain, min at <b>1.250x</b>`
-            },
-            cost() {
-                let cost = new Decimal("25")
-                return cost
-            },
-            effect() {
-                let eff = player.points.max(1).log10().add(1.25);
-                return eff;
-            },
-            effectDisplay() {
-                let eff = upgradeEffect(this.layer, this.id);
-                return format(eff, 3) + "x"; // Formats the number nicely using TMT's built-in formatter
-            },
-            unlocked() {
-                return hasUpgrade("n1", 23)
-            },
-        },
-        32: {
-            title() {
-                return `1/3`
-            },
-            description() {
-                return `Increases Small Number gain exponent by <b>+0.05</b>.`
-            },
-            cost() {
-                let cost = new Decimal("50")
-                return cost
-            },
-            effect() {
-                let eff = new Decimal("0.05");
-                return eff;
-            },
-            effectDisplay() {
-                let eff = upgradeEffect(this.layer, this.id);
-                return "+" + format(eff, 3); // Formats the number nicely using TMT's built-in formatter
-            },
-            unlocked() {
-                return hasUpgrade("n1", 31)
-            },
-        },
-        33: {
-            title() {
-                return `1/2`
-            },
-            description() {
-                return `Best Small Numbers multiplies Small Numbers gain, min is <b>1.500x</b>`
-            },
-            cost() {
-                let cost = new Decimal("100")
-                return cost
-            },
-            effect() {
-                let eff = player.n1.best.max(1).log10().add(1.5);
-                return eff;
-            },
-            effectDisplay() {
-                let eff = upgradeEffect(this.layer, this.id);
-                return format(eff, 3) + "x";
-            },
-            unlocked() {
-                return hasUpgrade("n1", 32)
-            },
-        },
-        41: {
-            title() {
-                return `Almost one [0.9]`
-            },
-            description() {
-                return `Remove the ablity to prestige, but generate <b>1%</b> of Small Numbers per second and unlock cycles.`
-            },
-            cost() {
-                let cost = new Decimal("250")
-                return cost
-            },
-            unlocked() {
-                return hasUpgrade("n1", 33)
-            },
-        },
+    2: {
+      requirementDescription: "2 Boosters",
+      tooltip:
+        "Note: Seconds/60 = Minutes. You might need to research or use a calculator for this...",
+      effectDescription() {
+        let eff = format(layers.b.getTimeeff1(), 3);
+        let target = format(layers.b.getTargetTimeeff1(), 3);
+        return `Boosters effect now affects Generator Tier 2s gain.<br>Time since Booster reset after ${target} seconds boost GP gain at a reduced rate. Effect: ${eff}x`;
+      },
+      done() {
+        return player.b.points.gte(2);
+      },
+      unlocked() {
+        return hasMilestone("b", 1);
+      },
     },
-    milestones: {
-        1: {
-            requirementDescription: "Cycle 1",
-            effectDescription: "Requires SM Upgrade 41 to get it. Gain <b>3.000x</b> more googology points and small numbers. Unlock a layer.",
-            done() { 
-                return hasUpgrade("n1", 41); 
-            },
-            unlocked() {
-                return hasUpgrade("n1", 41)
-            },
-        },
-        2: {
-            requirementDescription: "Cycle 1 Completion: 1.000F1,000 Cycle 1 Points.",
-            effectDescription: "Unlock a new layer. [coming soon]",
-            done() { 
-                return player.c1.points.gte(new Decimal("10").tetrate("1000")); 
-            },
-            unlocked() {
-                return hasUpgrade("n1", 41);
-            },
-        },
+    3: {
+      requirementDescription: "3 Boosters",
+      effectDescription() {
+        return `Boosters effect now affects Generator Tier 3s gain.<br>Multiply Booster Time Speed by +25% additive per booster.`;
+      },
+      done() {
+        return player.b.points.gte(3);
+      },
+      unlocked() {
+        return hasMilestone("b", 2);
+      },
     },
-    tabFormat: {
-        "Upgrades": {
-            content: [
-                ["display-text", function() { 
-                    let points = player.points;
-                    return `Googology Points: <h2 style="color: #ff0000; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;">${format(points)}</h2>`; 
-                }],
-                
-                // Hide prestige button when upgrade 41 is bought
-                "main-display",
-                function() { return !hasUpgrade("n1", 41) ? "prestige-button" : "" },
-                
-                // Working Gain Tracker Text
-                ["display-text", function() {
-                    if (hasUpgrade("n1", 41)) {
-                        let gen = new Decimal("0.01")
-                        let gain = tmp.n1.resetGain.times(gen); 
-                        return `You are earning <h2 style="color: #ff0000; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;">${format(gain)}</h2> Small Numbers per second`;
-                    }
-                    return "";
-                }],
-                
-                "blank",
-                
-                ["display-text", function() { 
-                    let best = player.n1.best;
-                    return `Best Small Numbers: <h2 style="color: #ff0000; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;">${format(best)}</h2>`; 
-                }],
-                
-                "upgrades",
-            ]
-        },
-        "Cycles": {
-            unlocked() {
-                return hasUpgrade("n1", 41)
-            },
-            content: [
-                ["display-text", function() { 
-                    let points = player.points;
-                    return `Googology Points: <h2 style="color: #ff0000; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;">${format(points)}</h2>`; 
-                }],
-                
-                // Hide prestige button when upgrade 41 is bought
-                "main-display",
-                function() { return !hasUpgrade("n1", 41) ? "prestige-button" : "" },
-                
-                // Working Gain Tracker Text
-                ["display-text", function() {
-                    if (hasUpgrade("n1", 41)) {
-                        let gen = new Decimal("0.01")
-                        let gain = tmp.n1.resetGain.times(gen); 
-                        return `You are earning <h2 style="color: #ff0000; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;">${format(gain)}</h2> Small Numbers per second`;
-                    }
-                    return "";
-                }],
-                
-                "blank",
-                
-                ["display-text", function() { 
-                    let best = player.n1.best;
-                    return `Best Small Numbers: <h2 style="color: #ff0000; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;">${format(best)}</h2>`; 
-                }],
-                
-                "milestones",
-            ]
-        },
+    4: {
+      requirementDescription: "4 Boosters",
+      effectDescription() {
+        return `Boosters effect now affects Generator Tier 4s gain<br>Increase Base GP gain by 3.`;
+      },
+      done() {
+        return player.b.points.gte(4);
+      },
+      unlocked() {
+        return hasMilestone("b", 3);
+      },
     },
-})
+    5: {
+      requirementDescription: "5 Boosters",
+      effectDescription() {
+        return `Unlock the 5th Generator whenever you have 10 of 4th Generators.`;
+      },
+      done() {
+        return player.b.points.gte(5);
+      },
+      unlocked() {
+        return hasMilestone("b", 4);
+      },
+    },
+    6: {
+      requirementDescription: "6 Boosters",
+      effectDescription() {
+        return `Time Speed affects Points gain.<br>Generator 1-4 costs nothing.`;
+      },
+      done() {
+        return player.b.points.gte(6);
+      },
+      unlocked() {
+        return hasMilestone("b", 5);
+      },
+    },
+    7: {
+      requirementDescription: "7 Boosters",
+      effectDescription() {
+        return `Time speed now affects GP, Generator 1, and Generator 2 gains.`;
+      },
+      done() {
+        return player.b.points.gte(7);
+      },
+      unlocked() {
+        return hasMilestone("b", 6);
+      },
+    },
+    8: {
+      requirementDescription: "8 Boosters",
+      effectDescription() {
+        return `Boosters XP now affects Points, but GP to XP exp is divided by 20.<br>Booster effect now affects Generator 5 gains.`;
+      },
+      done() {
+        return player.b.points.gte(8);
+      },
+      unlocked() {
+        return hasMilestone("b", 7);
+      },
+    },
+    9: {
+      requirementDescription: "9 Boosters",
+      effectDescription() {
+        return `Time Speed now affects Generator 3 and Generator 4 gains.`;
+      },
+      done() {
+        return player.b.points.gte(9);
+      },
+      unlocked() {
+        return hasMilestone("b", 8);
+      },
+    },
+    10: {
+      requirementDescription: "10 Boosters",
+      effectDescription() {
+        return `Unlock Generator 6 [Next Update!]`;
+      },
+      done() {
+        return player.b.points.gte(10);
+      },
+      unlocked() {
+        return hasMilestone("b", 9);
+      },
+    },
+  },
+
+  tabFormat: {
+    Boosters: {
+      content: [
+        [
+          "raw-html",
+          function () {
+            return `Doing a Booster Reset will reset ALL Generators, Generator Powers, and Points. However... the Upgrades are kept.<br>Doing this will get a bigger boost, come back quicker!`;
+          },
+        ],
+        "blank",
+        "main-display",
+        "prestige-button",
+        "blank",
+        [
+          "raw-html",
+          function () {
+            let t = player.b.time || new Decimal(0);
+
+            // Unit thresholds in seconds
+            const MIN = new Decimal(60);
+            const HR = MIN.times(60);
+            const DAY = HR.times(24);
+            const YEAR = DAY.times(365);
+            const MIL = YEAR.times(1000);
+            const EON = MIL.times(1e6);
+            const UNIV = EON.times(13.8);
+
+            let rem = new Decimal(t);
+            let parts = [];
+
+            // Universe Ages
+            let univ = rem.div(UNIV).floor();
+            if (univ.gt(0)) {
+              parts.push(
+                `${formatWhole(univ)} universe age${univ.eq(1) ? "" : "s"}`
+              );
+              rem = rem.sub(univ.times(UNIV));
+            }
+
+            // Eons
+            let eon = rem.div(EON).floor();
+            if (eon.gt(0)) {
+              parts.push(`${formatWhole(eon)} eon${eon.eq(1) ? "" : "s"}`);
+              rem = rem.sub(eon.times(EON));
+            }
+
+            // Millennia
+            let mil = rem.div(MIL).floor();
+            if (mil.gt(0)) {
+              parts.push(
+                `${formatWhole(mil)} millennia${mil.eq(1) ? "" : "s"}`
+              );
+              rem = rem.sub(mil.times(MIL));
+            }
+
+            // Years
+            let yr = rem.div(YEAR).floor();
+            if (yr.gt(0)) {
+              parts.push(`${formatWhole(yr)} year${yr.eq(1) ? "" : "s"}`);
+              rem = rem.sub(yr.times(YEAR));
+            }
+
+            // Days
+            let d = rem.div(DAY).floor();
+            if (d.gt(0)) {
+              parts.push(`${formatWhole(d)}d`);
+              rem = rem.sub(d.times(DAY));
+            }
+
+            // Hours
+            let h = rem.div(HR).floor();
+            if (h.gt(0)) {
+              parts.push(`${formatWhole(h)}h`);
+              rem = rem.sub(h.times(HR));
+            }
+
+            // Minutes
+            let m = rem.div(MIN).floor();
+            if (m.gt(0)) {
+              parts.push(`${formatWhole(m)}m`);
+              rem = rem.sub(m.times(MIN));
+            }
+
+            // Seconds (Always shows if sub-minute or as final remainder)
+            if (parts.length === 0 || rem.gt(0)) {
+              parts.push(`${format(rem, 3)}s`);
+            }
+
+            return `Time since Booster reset: <h3 style="color: blue; text-shadow: 0px 0px 10px blue">${parts.join(
+              " "
+            )}</h3>`;
+          },
+        ],
+        [
+          "raw-html",
+          function () {
+            // Fixed: Referencing layers.b explicitly instead of undefined `this`
+            let speed = layers.b.getSpeed();
+            return `Booster time speed: <h3 style="color: blue; text-shadow: 0px 0px 10px blue">${format(
+              speed,
+              3
+            )}x</h3>`;
+          },
+        ],
+        "blank",
+        "milestones",
+      ],
+    },
+  },
+});
+
+// upgrades: {11: {title: "Upgrade 0",description: "Blah",cost: new Decimal("100"),}, },
+// To be placed, using <h2 style="color: ${this.color}; text-shadow: 0px 0px 10px ${this.color}">
