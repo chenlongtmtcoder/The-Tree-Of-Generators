@@ -1,3 +1,4 @@
+// Generators
 addLayer("g", {
   name: "generators",
   symbol: "G",
@@ -17,9 +18,23 @@ addLayer("g", {
       tier8: new Decimal(0),
       tier9: new Decimal(0),
       tier10: new Decimal(0),
+      maxBuyCD: new Decimal(0),
     };
   },
 
+  tooltip() {
+    if (player.g.tier1.gt("0")) {
+      let p = formatWhole(player.g.tier1);
+      return `Generator 1s: ${p}`;
+    } else if (hasUpgrade("g", 23) && player.points.gte("1000")) {
+      return `Since you have 1000 points, you can now afford 'Generator I', which DIRECTLY boost GP gain.`;
+    } else if (player.g.points.gt("0")) {
+      let p = formatWhole(player.g.points);
+      return `GP: ${p}`;
+    } else {
+      return `This is Generators Layer. Click on it. [You may need to have this on]`;
+    }
+  },
   color: "lime",
   requires: new Decimal(0),
   resource: "Generator Powers",
@@ -114,6 +129,7 @@ addLayer("g", {
   },
 
   update(diff) {
+    // Generators
     if (getBuyableAmount("g", 15).gte(1)) {
       let t5Gen = buyableEffect("g", 15);
 
@@ -139,6 +155,13 @@ addLayer("g", {
 
       player.g.tier1 = player.g.tier1.add(t1Gen.times(diff));
     }
+
+    // Skills CD
+    if (player.g.maxBuyCD.gt(0)) {
+      player.g.maxBuyCD = player.g.maxBuyCD.minus(
+        layers.b.getSpeed().times(diff)
+      );
+    }
   },
 
   getGPbase() {
@@ -146,6 +169,51 @@ addLayer("g", {
     return base;
   },
 
+  clickables: {
+    11: {
+      max() {
+        CD = new Decimal("30");
+        return CD;
+      },
+      penalty() {
+        return new Decimal("1000");
+      },
+      title() {
+        return `Buy Max Generators`;
+      },
+      tooltip() {
+        return `This cooldown tick speed is also affected by Booster Time speed!`;
+      },
+      display() {
+        return `Buy 1 Level of Each Unlocked Generator, but divides GP by ${format(
+          this.penalty()
+        )}.<br>Cost: 1.00e10 GP.<br>Cooldown: ${format(
+          player.g.maxBuyCD.max("0"),
+          3
+        )}s`;
+      },
+      color() {
+        return "lime";
+      },
+      canClick() {
+        return player.g.points.gte("1e10") && player.g.maxBuyCD.lte("0");
+      },
+      unlocked() {
+        return hasMilestone("b", 5);
+      },
+      onClick() {
+        player.g.points = player.g.points.minus("1e10");
+        player.g.points = player.g.points.div(this.penalty());
+        player.g.maxBuyCD = this.max();
+        let ids = [11, 12, 13, 14, 15];
+        for (let id of ids) {
+          if (canBuyBuyable(this.layer, id)) {
+            buyBuyable(this.layer, id);
+          }
+        }
+      },
+    },
+  },
   buyables: {
     11: {
       title: "Generator Tier I",
@@ -504,6 +572,9 @@ addLayer("g", {
         }
         if (hasMilestone("b", 8)) {
           mult = mult.times(tmp.b.effect.max("1"));
+        }
+        if (hasMilestone("b", 10)) {
+          mult = mult.times(layers.b.getSpeed().max("1"));
         }
 
         let eff = base.pow(level.sub(1)).times(mult);
@@ -957,11 +1028,14 @@ addLayer("g", {
           },
         ],
         "blank",
+        "clickables",
         "buyables",
       ],
     },
   },
 });
+
+// Boosters
 addLayer("b", {
   name: "boosters",
   symbol: "B",
@@ -984,6 +1058,7 @@ addLayer("b", {
   },
 
   update(diff) {
+    // Booster Time Speed
     let tick = layers.b.getSpeed();
     player.b.time = player.b.time.add(tick.times(diff));
   },
@@ -1116,7 +1191,50 @@ addLayer("b", {
     let total = time.pow(exp);
     return total.max("1");
   },
-
+  clickables: {
+    11: {
+      title() {
+        return `Force Booster Reset.`;
+      },
+      display() {
+        return `Reset Booster for no Rewards. [This button is useless lamo]`;
+      },
+      color() {
+        return "blue";
+      },
+      canClick() {
+        return true;
+      },
+      unlocked() {
+        return hasMilestone("b", 5);
+      },
+      onClick() {
+        player.g.buyables[11] = new Decimal("0");
+        player.g.buyables[12] = new Decimal("0");
+        player.g.buyables[13] = new Decimal("0");
+        player.g.buyables[14] = new Decimal("0");
+        player.g.buyables[15] = new Decimal("0");
+        player.g.buyables[21] = new Decimal("0");
+        player.g.buyables[22] = new Decimal("0");
+        player.g.buyables[23] = new Decimal("0");
+        player.g.buyables[24] = new Decimal("0");
+        player.g.buyables[25] = new Decimal("0");
+        player.g.tier10 = new Decimal(0);
+        player.g.tier9 = new Decimal(0);
+        player.g.tier8 = new Decimal(0);
+        player.g.tier7 = new Decimal(0);
+        player.g.tier6 = new Decimal(0);
+        player.g.tier5 = new Decimal(0);
+        player.g.tier4 = new Decimal(0);
+        player.g.tier3 = new Decimal(0);
+        player.g.tier2 = new Decimal(0);
+        player.g.tier1 = new Decimal(0);
+        player.g.points = new Decimal(0);
+        player.points = new Decimal(0);
+        player.b.time = new Decimal(0);
+      },
+    },
+  },
   milestones: {
     1: {
       requirementDescription: "1 Boosters",
@@ -1169,7 +1287,7 @@ addLayer("b", {
     5: {
       requirementDescription: "5 Boosters",
       effectDescription() {
-        return `Unlock the 5th Generator whenever you have 10 of 4th Generators.`;
+        return `Unlock the 5th Generator whenever you have 10 of 4th Generators.<br>Unlock the ablity to Buy 1 of each Generator Level.`;
       },
       done() {
         return player.b.points.gte(5);
@@ -1229,7 +1347,7 @@ addLayer("b", {
     10: {
       requirementDescription: "10 Boosters",
       effectDescription() {
-        return `Unlock Generator 6 [Next Update!]`;
+        return `Unlock Generator 6! [Coming Soon]<br>Time Speed now affects Generator 5 gains.`;
       },
       done() {
         return player.b.points.gte(10);
@@ -1345,6 +1463,7 @@ addLayer("b", {
           },
         ],
         "blank",
+        "clickables",
         "milestones",
       ],
     },
