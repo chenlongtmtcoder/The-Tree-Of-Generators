@@ -1,3 +1,467 @@
+// Time Flux
+// Helper function to format Time Flux (seconds) into custom time units
+function formatTimeFlux(sec) {
+  if (!(sec instanceof Decimal)) sec = new Decimal(sec || 0);
+
+  const Y = new Decimal(31536000);            // 1 Year (365 days)
+  const MIL = Y.times(1000);                  // 1 Millennium (1,000 years)
+  const EON = Y.times(1000000000);            // 1 Eon (1 Billion years)
+  const UNI = EON.times(13.8);                // 1 Universe Age (13.8 Billion years)
+
+  // Single highest unit mode for >= 1 Millennium
+  if (sec.gte(UNI)) return `${format(sec.div(UNI), 4)} Universe Ages`;
+  if (sec.gte(EON)) return `${format(sec.div(EON), 3)} Eons`;
+  if (sec.gte(MIL)) return `${format(sec.div(MIL), 3)} Millennia`;
+
+  // Full breakdown mode for < 1 Millennium
+  let remaining = sec;
+  let parts = [];
+
+  let y = remaining.div(Y).floor();
+  if (y.gt(0)) {
+    parts.push(`${formatWhole(y)}y`);
+    remaining = remaining.sub(y.times(Y));
+  }
+
+  let d = remaining.div(86400).floor();
+  if (d.gt(0)) {
+    parts.push(`${formatWhole(d)}d`);
+    remaining = remaining.sub(d.times(86400));
+  }
+
+  let h = remaining.div(3600).floor();
+  if (h.gt(0)) {
+    parts.push(`${formatWhole(h)}h`);
+    remaining = remaining.sub(h.times(3600));
+  }
+
+  let m = remaining.div(60).floor();
+  if (m.gt(0)) {
+    parts.push(`${formatWhole(m)}m`);
+    remaining = remaining.sub(m.times(60));
+  }
+
+  let s = remaining;
+  if (s.gt(0) || parts.length === 0) {
+    parts.push(`${format(s, 3)}s`);
+  }
+
+  return parts.join(" ");
+}
+
+addLayer("tf", {
+  name: "TIME FLUX",
+  symbol: "TF",
+  position: 0,
+  row: "side",
+
+  startData() {
+    return {
+      unlocked: true,
+      points: new Decimal(600),
+    };
+  },
+
+  color: "yellow",
+  resource: "Time Flux",
+
+  getCap() {
+    let baseCap = new Decimal("1800");
+    let buyableMult = buyableEffect("tf", 11);
+    return baseCap.times(buyableMult);
+  },
+
+  getGain() {
+    let gain = new Decimal("0");
+    if (player.tf.points.lt(layers.tf.getCap())) {
+      gain = new Decimal("1").div("360"); // ~10s / hour base gain
+      if (player.tf.buyables[12].gte("1")) {
+        gain = gain.times(buyableEffect("tf", 12))
+      }
+      if (getClickableState("tf", 11) === 1) {
+        gain = gain.add("1"); // +1s / sec when paused
+      }
+    }
+    if (getClickableState("tf", 12) === 1) {
+      gain = gain.minus("1"); // -1s / sec when 2x speed active
+    }
+    return gain;
+  },
+
+  getSpeed() {
+    if (getClickableState("tf", 11) === 1) return new Decimal(0);
+    if (getClickableState("tf", 12) === 1) return new Decimal(2);
+    return new Decimal(1);
+  },
+
+  update(diff) {
+    let netGain = layers.tf.getGain().times(diff);
+    let cap = layers.tf.getCap();
+
+    // Cap Time Flux gain and clamp minimum to 0
+    player.tf.points = player.tf.points.add(netGain).max(0);
+
+    // Auto turn off 2x Speed if empty
+    if (getClickableState("tf", 12) === 1 && player.tf.points.lte(0)) {
+      setClickableState("tf", 12, 0);
+    }
+  },
+
+  buyables: {
+    11: {
+      title: "Increase Time Flux Capacity",
+
+      getCap() {
+        let cap = new Decimal("8");
+        return cap;
+      },
+
+      cost(x) {
+        let level = new Decimal(
+          x !== undefined ? x : getBuyableAmount(this.layer, this.id)
+        );
+        return new Decimal(1200).times(new Decimal(2).pow(level));
+      },
+
+      effect(x) {
+        let level = new Decimal(
+          x !== undefined ? x : getBuyableAmount(this.layer, this.id)
+        );
+        return new Decimal(2).pow(level);
+      },
+
+      display() {
+        let data = temp[this.layer].buyables[this.id];
+        let amount = getBuyableAmount(this.layer, this.id);
+        let maxed = amount.gte(this.getCap());
+
+        return `Multiplies Time Flux cap by <b>2x</b> per level.<br><br>` +
+          `Level: ${formatWhole(amount)} / ${formatWhole(this.getCap())}<br>` +
+          `Cost: ${maxed ? "MAXED" : formatTimeFlux(data.cost)}<br>` +
+          `Effect: ${format(data.effect)}x Cap`;
+      },
+
+      canAfford() {
+        if (getBuyableAmount(this.layer, this.id).gte(this.getCap())) return false;
+        return player.tf.points.gte(this.cost());
+      },
+
+      buy() {
+        if (getBuyableAmount(this.layer, this.id).gte(this.getCap())) return;
+        let cost = this.cost();
+        player.tf.points = player.tf.points.sub(cost);
+        setBuyableAmount(
+          this.layer,
+          this.id,
+          getBuyableAmount(this.layer, this.id).add(1)
+        );
+      },
+
+      unlocked() {
+        return true;
+      },
+
+      style() {
+        let maxed = getBuyableAmount(this.layer, this.id).gte(this.getCap());
+        let canAfford = this.canAfford();
+
+        if (maxed) {
+          return {
+            "background": "linear-gradient(135deg, #1b3a2b 0%, #0f241a 100%)",
+            "border": "2px solid #00ff88",
+            "color": "#00ff88",
+            "box-shadow": "0 0 12px rgba(0, 255, 136, 0.4)",
+            "width": "200px",
+            "height": "120px",
+            "border-radius": "10px",
+            "cursor": "default",
+          };
+        }
+        if (canAfford) {
+          return {
+            "background": "linear-gradient(135deg, #1a2a40 0%, #0d1624 100%)",
+            "border": "2px solid #00d2ff",
+            "color": "#ffffff",
+            "box-shadow": "0 0 14px rgba(0, 210, 255, 0.5)",
+            "width": "200px",
+            "height": "120px",
+            "border-radius": "10px",
+            "cursor": "pointer",
+          };
+        }
+        return {
+          "background": "#121720",
+          "border": "2px solid #2a3548",
+          "color": "#5a6e8c",
+          "width": "200px",
+          "height": "120px",
+          "border-radius": "10px",
+          "cursor": "not-allowed",
+        };
+      },
+    },
+    12: {
+      title: "Time Flux Multiplier",
+
+      cost(x) {
+        let level = new Decimal(
+          x !== undefined ? x : getBuyableAmount(this.layer, this.id)
+        );
+        return new Decimal(600).times(new Decimal(1.2).pow(level));
+      },
+
+      effect(x) {
+        let level = new Decimal(
+          x !== undefined ? x : getBuyableAmount(this.layer, this.id)
+        );
+        let eff = level.pow(2).add(1);
+
+        if (eff.gt(100)) {
+          eff = eff.div(100).pow(0.8).times(100);
+        }
+
+        if (eff.gt(1000)) {
+          eff = eff.div(1000).pow(0.75).times(1000);
+        }
+
+        return eff;
+      },
+
+      display() {
+        let data = temp[this.layer].buyables[this.id];
+        let amount = getBuyableAmount(this.layer, this.id);
+        let eff = data.effect;
+
+        let softcapNotice = "";
+        if (eff.gte(1000)) {
+          softcapNotice = " <span style='color: #ff9900; text-shadow: 0 0 5px #ff9900;'>(softcapped²)</span>";
+        } else if (eff.gte(100)) {
+          softcapNotice = " <span style='color: #ffcc00; text-shadow: 0 0 5px #ffcc00;'>(softcapped)</span>";
+        }
+
+        return `Multiplies Time Flux gain by <b>(x² + 1)</b>.<br><br>` +
+          `Level: ${formatWhole(amount)}<br>` +
+          `Cost: ${typeof formatTimeFlux === "function" ? formatTimeFlux(data.cost) : format(data.cost)}<br>` +
+          `Effect: ${format(eff)}x${softcapNotice}`;
+      },
+
+      canAfford() {
+        return player[this.layer].points.gte(this.cost());
+      },
+
+      buy() {
+        let cost = this.cost();
+        player[this.layer].points = player[this.layer].points.sub(cost);
+        setBuyableAmount(
+          this.layer,
+          this.id,
+          getBuyableAmount(this.layer, this.id).add(1)
+        );
+      },
+
+      unlocked() {
+        return true;
+      },
+
+      style() {
+        let canAfford = this.canAfford();
+
+        if (canAfford) {
+          return {
+            "background": "linear-gradient(135deg, #3d2c0d 0%, #1f1403 100%)",
+            "border": "2px solid #ffaa00",
+            "color": "#ffffff",
+            "box-shadow": "0 0 14px rgba(255, 170, 0, 0.5)",
+            "width": "200px",
+            "height": "120px",
+            "border-radius": "10px",
+            "cursor": "pointer",
+          };
+        }
+        return {
+          "background": "#1a150e",
+          "border": "2px solid #3d3120",
+          "color": "#736045",
+          "width": "200px",
+          "height": "120px",
+          "border-radius": "10px",
+          "cursor": "not-allowed",
+        };
+      },
+    },
+  },
+
+  clickables: {
+    11: {
+      title() {
+        return "0x Speed (Pause)";
+      },
+      display() {
+        let state = getClickableState("tf", 11) === 1 ? "ON" : "OFF";
+        return `Freezes game progress.<br>Gains <b>+1s Time Flux / sec</b>.<br><br>Status: <b>${state}</b>`;
+      },
+      canClick() {
+        return true;
+      },
+      onClick() {
+        let nextState = 1 - getClickableState("tf", 11);
+        setClickableState("tf", 11, nextState);
+        if (nextState === 1) {
+          setClickableState("tf", 12, 0);
+        }
+      },
+      style() {
+        let isActive = getClickableState("tf", 11) === 1;
+        return {
+          "background-color": isActive ? "#00ffff" : "grey",
+          color: isActive ? "black" : "white",
+          border: "2px solid yellow",
+          "border-radius": "8px",
+          width: "200px",
+          height: "100px",
+        };
+      },
+    },
+    12: {
+      title() {
+        return "2x Speed";
+      },
+      display() {
+        let state = getClickableState("tf", 12) === 1 ? "ON" : "OFF";
+        return `Runs the game <b>2x faster</b>.<br>Cost: 1s of Time Flux / sec<br><br>Status: <b>${state}</b>`;
+      },
+      canClick() {
+        return player.tf.points.gt(0) || getClickableState("tf", 12) === 1;
+      },
+      onClick() {
+        let nextState = 1 - getClickableState("tf", 12);
+        setClickableState("tf", 12, nextState);
+        if (nextState === 1) {
+          setClickableState("tf", 11, 0);
+        }
+      },
+      style() {
+        let isActive = getClickableState("tf", 12) === 1;
+        return {
+          "background-color": isActive ? "lime" : "grey",
+          color: "white",
+          border: "2px solid yellow",
+          "border-radius": "8px",
+          width: "200px",
+          height: "100px",
+        };
+      },
+    },
+  },
+
+  tabFormat: {
+    Speed: {
+      content: [
+        [
+          "raw-html",
+          function () {
+            let tf = player.tf ? player.tf.points : new Decimal(0);
+            return `You have <h2 style="color: yellow; text-shadow: 0px 0px 10px yellow">${formatTimeFlux(
+              tf
+            )}</h2> of Time Flux`;
+          },
+        ],
+        [
+          "raw-html",
+          function () {
+            let tfcap = layers.tf.getCap();
+            return `Time Flux Cap: <h3 style="color: yellow; text-shadow: 0px 0px 10px yellow">${formatTimeFlux(
+              tfcap
+            )}</h3>`;
+          },
+        ],
+        [
+          "raw-html",
+          function () {
+            let gainPerSec = layers.tf.getGain();
+            let absGain = gainPerSec.abs();
+            let isLosing = gainPerSec.lt(0);
+
+            let rate, unit;
+            if (absGain.gte(1)) {
+              rate = absGain;
+              unit = "second";
+            } else if (absGain.times(60).gte(1)) {
+              rate = absGain.times(60);
+              unit = "minute";
+            } else {
+              rate = absGain.times(3600);
+              unit = "hour";
+            }
+
+            let action = isLosing ? "losing" : "gaining";
+            let color = isLosing ? "#ff4444" : "yellow";
+
+            return `You are ${action} <h3 style="color: ${color}; text-shadow: 0px 0px 10px ${color}">${format(
+              rate,
+              2
+            )}</h3> Seconds of Time Flux per ${unit}.`;
+          },
+        ],
+        "blank",
+        "clickables",
+      ],
+    },
+    Buyables: {
+      content: [
+        [
+          "raw-html",
+          function () {
+            let tf = player.tf ? player.tf.points : new Decimal(0);
+            return `You have <h2 style="color: yellow; text-shadow: 0px 0px 10px yellow">${formatTimeFlux(
+              tf
+            )}</h2> of Time Flux`;
+          },
+        ],
+        [
+          "raw-html",
+          function () {
+            let tfcap = layers.tf.getCap();
+            return `Time Flux Cap: <h3 style="color: yellow; text-shadow: 0px 0px 10px yellow">${formatTimeFlux(
+              tfcap
+            )}</h3>`;
+          },
+        ],
+        [
+          "raw-html",
+          function () {
+            let gainPerSec = layers.tf.getGain();
+            let absGain = gainPerSec.abs();
+            let isLosing = gainPerSec.lt(0);
+
+            let rate, unit;
+            if (absGain.gte(1)) {
+              rate = absGain;
+              unit = "second";
+            } else if (absGain.times(60).gte(1)) {
+              rate = absGain.times(60);
+              unit = "minute";
+            } else {
+              rate = absGain.times(3600);
+              unit = "hour";
+            }
+
+            let action = isLosing ? "losing" : "gaining";
+            let color = isLosing ? "#ff4444" : "yellow";
+
+            return `You are ${action} <h3 style="color: ${color}; text-shadow: 0px 0px 10px ${color}">${format(
+              rate,
+              2
+            )}</h3> Seconds of Time Flux per ${unit}.`;
+          },
+        ],
+        "blank",
+        "buyables",
+      ],
+    },
+  },
+});
+
 // Generators
 addLayer("g", {
   name: "generators",
@@ -22,19 +486,44 @@ addLayer("g", {
     };
   },
 
-  tooltip() {
-    if (player.g.tier1.gt("0")) {
-      let p = formatWhole(player.g.tier1);
-      return `Generator 1s: ${p}`;
-    } else if (hasUpgrade("g", 23) && player.points.gte("1000")) {
-      return `Since you have 1000 points, you can now afford 'Generator I', which DIRECTLY boost GP gain.`;
-    } else if (player.g.points.gt("0")) {
-      let p = formatWhole(player.g.points);
-      return `GP: ${p}`;
-    } else {
-      return `This is Generators Layer. Click on it. [You may need to have this on]`;
-    }
+  getNextGoal() {
+    if (!hasUpgrade("g", 23)) return new Decimal("1000");
+    if (getBuyableAmount("g", 11).lt(10)) return new Decimal("1e6");
+    if (getBuyableAmount("g", 12).lt(10)) return new Decimal("1e11");
+    if (getBuyableAmount("g", 13).lt(10)) return new Decimal("1e20");
+    if (getBuyableAmount("g", 14).lt(10) || !hasMilestone("b", 5)) return new Decimal("1e67");
+    return null;
   },
+
+  getNextGoalName() {
+    if (!hasUpgrade("g", 23)) return "Generator I";
+    if (getBuyableAmount("g", 11).lt(10)) return "Generator II";
+    if (getBuyableAmount("g", 12).lt(10)) return "Generator III";
+    if (getBuyableAmount("g", 13).lt(10)) return "Generator IV";
+    if (getBuyableAmount("g", 14).lt(10) || !hasMilestone("b", 5)) return "Generator V";
+    return "All Current Tiers Unlocked";
+  },
+
+  tooltip() {
+    let goal = layers.g.getNextGoal();
+    let name = layers.g.getNextGoalName();
+
+    if (goal) {
+      let p = formatWhole(player.points);
+      let pp = format(player.points.div(goal).times("100").min("100"));
+      return `Get ${format(goal)} Points to Buy '${name}'<br>(${p}/${format(goal)})<br>[${pp}%].`;
+    }
+
+    if (player.g.tier5.gt("0")) return `Tier 5: ${formatWhole(player.g.tier5)}`;
+    if (player.g.tier4.gt("0")) return `Tier 4: ${formatWhole(player.g.tier4)}`;
+    if (player.g.tier3.gt("0")) return `Tier 3: ${formatWhole(player.g.tier3)}`;
+    if (player.g.tier2.gt("0")) return `Tier 2: ${formatWhole(player.g.tier2)}`;
+    if (player.g.tier1.gt("0")) return `Tier 1: ${formatWhole(player.g.tier1)}`;
+    if (player.g.points.gt("0")) return `GP: ${formatWhole(player.g.points)}`;
+
+    return `This is Generators Layer. Click on it. [You may need to have this on]`;
+  },
+
   color: "lime",
   requires: new Decimal(0),
   resource: "Generator Powers",
@@ -48,20 +537,16 @@ addLayer("g", {
   exponent: 0,
 
   gainMult() {
-    // 1. Base gain
     let base = new Decimal(0);
     if (hasUpgrade("g", 11)) base = base.add(upgradeEffect("g", 11));
     if (hasUpgrade("g", 12)) base = base.add(upgradeEffect("g", 12));
     if (hasMilestone("b", 4)) base = base.add("3");
 
-    // 2. Exponent
     let exp = new Decimal("1");
     if (hasUpgrade("g", 22)) exp = exp.add(upgradeEffect("g", 22));
 
-    // 3. Base gain calculation
     let total = base.pow(exp);
 
-    // 4. Mult after base
     let mult = new Decimal("1");
     if (hasUpgrade("g", 13)) mult = mult.times(upgradeEffect("g", 13));
     if (getBuyableAmount("g", 11).gt(0)) {
@@ -75,8 +560,7 @@ addLayer("g", {
       mult = mult.times(layers.b.getSpeed().max("1"));
     }
 
-    // 5. Grand total
-    return total.times(mult);
+    return total.times(mult).times(layers.tf.getSpeed());
   },
 
   row: 0,
@@ -129,51 +613,66 @@ addLayer("g", {
   },
 
   update(diff) {
-    // Generators
     if (getBuyableAmount("g", 15).gte(1)) {
       let t5Gen = buyableEffect("g", 15);
-
-      player.g.tier5 = player.g.tier5.add(t5Gen.times(diff));
+      player.g.tier5 = player.g.tier5.add(t5Gen.times(layers.tf.getSpeed()).times(diff));
     }
     if (getBuyableAmount("g", 14).gte(1)) {
       let t4Gen = buyableEffect("g", 14);
-
-      player.g.tier4 = player.g.tier4.add(t4Gen.times(diff));
+      player.g.tier4 = player.g.tier4.add(t4Gen.times(layers.tf.getSpeed()).times(diff));
     }
     if (getBuyableAmount("g", 13).gte(1)) {
       let t3Gen = buyableEffect("g", 13);
-
-      player.g.tier3 = player.g.tier3.add(t3Gen.times(diff));
+      player.g.tier3 = player.g.tier3.add(t3Gen.times(layers.tf.getSpeed()).times(diff));
     }
     if (getBuyableAmount("g", 12).gte(1)) {
       let t2Gen = buyableEffect("g", 12);
-
-      player.g.tier2 = player.g.tier2.add(t2Gen.times(diff));
+      player.g.tier2 = player.g.tier2.add(t2Gen.times(layers.tf.getSpeed()).times(diff));
     }
     if (getBuyableAmount("g", 11).gte(1)) {
       let t1Gen = buyableEffect("g", 11);
-
-      player.g.tier1 = player.g.tier1.add(t1Gen.times(diff));
+      player.g.tier1 = player.g.tier1.add(t1Gen.times(layers.tf.getSpeed()).times(diff));
     }
 
-    // Skills CD
     if (player.g.maxBuyCD.gt(0)) {
       player.g.maxBuyCD = player.g.maxBuyCD.minus(
-        layers.b.getSpeed().times(diff)
+        layers.b.getSpeed().times(layers.tf.getSpeed()).times(diff)
       );
     }
   },
 
   getGPbase() {
-    let base = new Decimal("2");
-    return base;
+    return new Decimal("2");
+  },
+
+  bars: {
+    progress: {
+      direction: RIGHT,
+      width: 500,
+      height: 26,
+      progress() {
+        let goal = layers.g.getNextGoal();
+        if (!goal) return 1;
+        let pLog = player.points.max(1).log10();
+        let gLog = goal.log10();
+        return pLog.div(gLog).clamp(0, 1).toNumber();
+      },
+      display() {
+        let goal = layers.g.getNextGoal();
+        let name = layers.g.getNextGoalName();
+        if (!goal) return "All Generator Tiers Unlocked!";
+        let pct = player.points.div(goal).times(100).min(100);
+        return `${name}: ${format(player.points)} / ${format(goal)} Points (${format(pct, 3)}%)`;
+      },
+      fillStyle: { "background-color": "#00ff66" },
+      borderStyle: { "border-color": "lime" },
+    },
   },
 
   clickables: {
     11: {
       max() {
-        CD = new Decimal("30");
-        return CD;
+        return new Decimal("30");
       },
       penalty() {
         return new Decimal("1000");
@@ -214,6 +713,7 @@ addLayer("g", {
       },
     },
   },
+
   buyables: {
     11: {
       title: "Generator Tier I",
@@ -282,7 +782,6 @@ addLayer("g", {
         let cost = this.cost();
         if (!hasMilestone("b", 6)) {
           player.points = player.points.sub(cost);
-        } else {
         }
         player.g.buyables[this.id] = getBuyableAmount(this.layer, this.id).add(
           1
@@ -360,7 +859,6 @@ addLayer("g", {
         let cost = this.cost();
         if (!hasMilestone("b", 6)) {
           player.points = player.points.sub(cost);
-        } else {
         }
         player.g.buyables[this.id] = getBuyableAmount(this.layer, this.id).add(
           1
@@ -440,7 +938,6 @@ addLayer("g", {
         let cost = this.cost();
         if (!hasMilestone("b", 6)) {
           player.points = player.points.sub(cost);
-        } else {
         }
         player.g.buyables[this.id] = getBuyableAmount(this.layer, this.id).add(
           1
@@ -522,7 +1019,6 @@ addLayer("g", {
         let cost = this.cost();
         if (!hasMilestone("b", 6)) {
           player.points = player.points.sub(cost);
-        } else {
         }
         player.g.buyables[this.id] = getBuyableAmount(this.layer, this.id).add(
           1
@@ -689,8 +1185,7 @@ addLayer("g", {
         return `Powered Generators Synergy`;
       },
       getEffExp() {
-        let exp = new Decimal("1").div("3");
-        return exp;
+        return new Decimal("1").div("3");
       },
       description() {
         let exp = this.getEffExp();
@@ -928,12 +1423,13 @@ addLayer("g", {
         [
           "raw-html",
           function () {
-            // Fixed: Removed duplicate text that was causing visual clutter
             return `You are gaining <h2 style="color: lime; text-shadow: 0px 0px 10px lime">${formatWhole(
               tmp.g.resetGain
             )}</h2> Generator Powers/s.`;
           },
         ],
+        "blank",
+        ["bar", "progress"],
         "blank",
         "upgrades",
       ],
@@ -962,69 +1458,51 @@ addLayer("g", {
           },
         ],
         "blank",
+        ["bar", "progress"],
+        "blank",
         [
           "raw-html",
           function () {
-            // Fixed: Safe check prevents crashing layer rendering
-            if (player.g.tier1.lte(0)) {
-              return "";
-            } else {
-              return `You have <h2 style="color: yellow; text-shadow: 0px 0px 10px yellow">${format(
-                player.g.tier1
-              )}</h2> Generator Tier 1s, which DIRECTLY boost Generator Powers gain.`;
-            }
+            if (player.g.tier1.lte(0)) return "";
+            return `You have <h2 style="color: yellow; text-shadow: 0px 0px 10px yellow">${format(
+              player.g.tier1
+            )}</h2> Generator Tier 1s, which DIRECTLY boost Generator Powers gain.`;
           },
         ],
         [
           "raw-html",
           function () {
-            // Fixed: Safe check prevents crashing layer rendering
-            if (player.g.tier2.lte(0)) {
-              return "";
-            } else {
-              return `You have <h2 style="color: orange; text-shadow: 0px 0px 10px orange">${format(
-                player.g.tier2
-              )}</h2> Generator Tier 2s, which DIRECTLY boost Generator Tier 1 gain.`;
-            }
+            if (player.g.tier2.lte(0)) return "";
+            return `You have <h2 style="color: orange; text-shadow: 0px 0px 10px orange">${format(
+              player.g.tier2
+            )}</h2> Generator Tier 2s, which DIRECTLY boost Generator Tier 1 gain.`;
           },
         ],
         [
           "raw-html",
           function () {
-            // Fixed: Safe check prevents crashing layer rendering
-            if (player.g.tier3.lte(0)) {
-              return "";
-            } else {
-              return `You have <h2 style="color: red; text-shadow: 0px 0px 10px red">${format(
-                player.g.tier3
-              )}</h2> Generator Tier 3s, which DIRECTLY boost Generator Tier 2 gain.`;
-            }
+            if (player.g.tier3.lte(0)) return "";
+            return `You have <h2 style="color: red; text-shadow: 0px 0px 10px red">${format(
+              player.g.tier3
+            )}</h2> Generator Tier 3s, which DIRECTLY boost Generator Tier 2 gain.`;
           },
         ],
         [
           "raw-html",
           function () {
-            // Fixed: Safe check prevents crashing layer rendering
-            if (player.g.tier4.lte(0)) {
-              return "";
-            } else {
-              return `You have <h2 style="color: pink; text-shadow: 0px 0px 10px pink">${format(
-                player.g.tier4
-              )}</h2> Generator Tier 4s, which DIRECTLY boost Generator Tier 3 gain.`;
-            }
+            if (player.g.tier4.lte(0)) return "";
+            return `You have <h2 style="color: pink; text-shadow: 0px 0px 10px pink">${format(
+              player.g.tier4
+            )}</h2> Generator Tier 4s, which DIRECTLY boost Generator Tier 3 gain.`;
           },
         ],
         [
           "raw-html",
           function () {
-            // Safe check using player.g.tier5 directly since buyable 15 isn't defined yet
-            if (player.g.tier5.lte(0)) {
-              return "";
-            } else {
-              return `You have <h2 style="color: magenta; text-shadow: 0px 0px 10px magenta">${format(
-                player.g.tier5
-              )}</h2> Generator Tier 5s, which DIRECTLY boost Generator Tier 4 gain.`;
-            }
+            if (player.g.tier5.lte(0)) return "";
+            return `You have <h2 style="color: magenta; text-shadow: 0px 0px 10px magenta">${format(
+              player.g.tier5
+            )}</h2> Generator Tier 5s, which DIRECTLY boost Generator Tier 4 gain.`;
           },
         ],
         "blank",
@@ -1059,12 +1537,12 @@ addLayer("b", {
 
   update(diff) {
     // Booster Time Speed
-    let tick = layers.b.getSpeed();
+    let tick = layers.b.getSpeed().times(layers.tf.getSpeed());
     player.b.time = player.b.time.add(tick.times(diff));
   },
 
   color: "blue",
-  requires: new Decimal(1e42),
+  requires: new Decimal("1e42"),
   resource: "Boosters",
   baseResource: "XP",
 
@@ -1191,6 +1669,43 @@ addLayer("b", {
     let total = time.pow(exp);
     return total.max("1");
   },
+
+  bars: {
+    progress: {
+      direction: RIGHT,
+      width: 500,
+      height: 26,
+      progress() {
+        let current = layers.b.baseAmount();
+        let target = getNextAt("b");
+        if (!target || target.lte(0)) return 0;
+
+        let pLog = current.max(1).log10();
+        let gLog = target.max(1).log10();
+
+        if (gLog.eq(0)) return 0;
+        let prog = pLog.div(gLog).toNumber();
+        if (isNaN(prog)) return 0;
+        return Math.max(0, Math.min(1, prog));
+      },
+      display() {
+        let current = layers.b.baseAmount();
+        let target = getNextAt("b");
+        if (!target || target.lte(0)) return "0 / 0 XP (0%)";
+
+        let pLog = current.max(1).log10();
+        let gLog = target.max(1).log10();
+        let pct = gLog.gt(0)
+          ? pLog.div(gLog).times(100).clamp(0, 100)
+          : new Decimal(0);
+
+        return `Next Booster: ${format(current)} / ${format(target)} XP (${format(pct, 3)}%)`;
+      },
+      fillStyle: { "background-color": "#0066ff" },
+      borderStyle: { "border-color": "blue" },
+    },
+  },
+
   clickables: {
     11: {
       title() {
@@ -1324,9 +1839,9 @@ addLayer("b", {
       requirementDescription: "8 Boosters",
       tooltip() {
         if (hasMilestone("b", 8)) {
-          return `Buy Max generators will allow you to buy 1 of each level.`
-        }else{
-          return ``
+          return `Buy Max generators will allow you to buy 1 of each level.`;
+        } else {
+          return ``;
         }
       },
       effectDescription() {
@@ -1378,12 +1893,34 @@ addLayer("b", {
         "main-display",
         "prestige-button",
         "blank",
+        ["bar", "progress"],
+        "blank",
+        [
+          "raw-html",
+          function () {
+            return `Generator Power Factor: <h3 style="color: blue; text-shadow: 0px 0px 10px blue">^${format(
+              layers.b.getfactorGPexp()
+            )}</h3>`;
+          },
+        ],
+        [
+          "raw-html",
+          function () {
+            if (layers.b.getfactorpointexp().gt("0")) {
+              return `Point Factor: <h3 style="color: blue; text-shadow: 0px 0px 10px blue">^${format(
+                layers.b.getfactorpointexp()
+              )}</h3>`;
+            } else {
+              return ``;
+            }
+          },
+        ],
+        "blank",
         [
           "raw-html",
           function () {
             let t = player.b.time || new Decimal(0);
 
-            // Unit thresholds in seconds
             const MIN = new Decimal(60);
             const HR = MIN.times(60);
             const DAY = HR.times(24);
@@ -1395,7 +1932,6 @@ addLayer("b", {
             let rem = new Decimal(t);
             let parts = [];
 
-            // Universe Ages
             let univ = rem.div(UNIV).floor();
             if (univ.gt(0)) {
               parts.push(
@@ -1404,14 +1940,12 @@ addLayer("b", {
               rem = rem.sub(univ.times(UNIV));
             }
 
-            // Eons
             let eon = rem.div(EON).floor();
             if (eon.gt(0)) {
               parts.push(`${formatWhole(eon)} eon${eon.eq(1) ? "" : "s"}`);
               rem = rem.sub(eon.times(EON));
             }
 
-            // Millennia
             let mil = rem.div(MIL).floor();
             if (mil.gt(0)) {
               parts.push(
@@ -1420,35 +1954,30 @@ addLayer("b", {
               rem = rem.sub(mil.times(MIL));
             }
 
-            // Years
             let yr = rem.div(YEAR).floor();
             if (yr.gt(0)) {
               parts.push(`${formatWhole(yr)} year${yr.eq(1) ? "" : "s"}`);
               rem = rem.sub(yr.times(YEAR));
             }
 
-            // Days
             let d = rem.div(DAY).floor();
             if (d.gt(0)) {
               parts.push(`${formatWhole(d)}d`);
               rem = rem.sub(d.times(DAY));
             }
 
-            // Hours
             let h = rem.div(HR).floor();
             if (h.gt(0)) {
               parts.push(`${formatWhole(h)}h`);
               rem = rem.sub(h.times(HR));
             }
 
-            // Minutes
             let m = rem.div(MIN).floor();
             if (m.gt(0)) {
               parts.push(`${formatWhole(m)}m`);
               rem = rem.sub(m.times(MIN));
             }
 
-            // Seconds (Always shows if sub-minute or as final remainder)
             if (parts.length === 0 || rem.gt(0)) {
               parts.push(`${format(rem, 3)}s`);
             }
@@ -1461,7 +1990,6 @@ addLayer("b", {
         [
           "raw-html",
           function () {
-            // Fixed: Referencing layers.b explicitly instead of undefined `this`
             let speed = layers.b.getSpeed();
             return `Booster time speed: <h3 style="color: blue; text-shadow: 0px 0px 10px blue">${format(
               speed,
@@ -1476,6 +2004,3 @@ addLayer("b", {
     },
   },
 });
-
-// upgrades: {11: {title: "Upgrade 0",description: "Blah",cost: new Decimal("100"),}, },
-// To be placed, using <h2 style="color: ${this.color}; text-shadow: 0px 0px 10px ${this.color}">

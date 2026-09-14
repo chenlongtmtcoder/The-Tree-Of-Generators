@@ -11,13 +11,19 @@ let modInfo = {
 };
 
 // Set your version in num and name
+// Set your version in num and name
 let VERSION = {
-  num: "0.2.1b",
-  name: "Small QoL+",
+  num: "0.2.1c",
+  name: "Time Flux From Revolution Idle?",
 };
 
 
 let changelog = `<h1>Changelog:</h1><br>
+  <b>v0.2.1c - Time Flux From Revolution Idle?</b><br>
+    - Added TIME FLUX.<br>
+    - Added 2 buyables.<br>
+    - Added 0x speed and 2x speed.<br>
+    - Endgame: Same as v0.2.1<br><br>
   <b>v0.2.1b</b><br>
     - Raise the requirement of 'Buy Max Generators' to 8 Boosters.<br>
     - Endgame: Same as v0.2.1<br><br>
@@ -44,6 +50,7 @@ let changelog = `<h1>Changelog:</h1><br>
 		- Added 4 Generators Buyables that DIRECTLY boost each other.<br>
     - Added 9 Generator Upgrades.<br>
 		- Endgame: 1.00e42 Generator Powers.`;
+
 
 let winText = `Congratulations! You have reached the end and beaten this game, but for now...`;
 
@@ -76,7 +83,7 @@ function getPointGen() {
     gain = gain.times(layers.b.getSpeed().max("1"));
   }
 
-  return gain;
+  return gain.times(layers.tf.getSpeed());
 }
 
 // You can add non-layer related variables that should to into "player" and be saved here, along with default values
