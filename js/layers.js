@@ -199,7 +199,7 @@ addLayer("g", {
         return player.g.points.gte("1e10") && player.g.maxBuyCD.lte("0");
       },
       unlocked() {
-        return hasMilestone("b", 5);
+        return hasMilestone("b", 8);
       },
       onClick() {
         player.g.points = player.g.points.minus("1e10");
@@ -1287,7 +1287,7 @@ addLayer("b", {
     5: {
       requirementDescription: "5 Boosters",
       effectDescription() {
-        return `Unlock the 5th Generator whenever you have 10 of 4th Generators.<br>Unlock the ablity to Buy 1 of each Generator Level.`;
+        return `Unlock the 5th Generator whenever you have 10 of 4th Generators.`;
       },
       done() {
         return player.b.points.gte(5);
@@ -1322,8 +1322,15 @@ addLayer("b", {
     },
     8: {
       requirementDescription: "8 Boosters",
+      tooltip() {
+        if (hasMilestone("b", 8)) {
+          return `Buy Max generators will allow you to buy 1 of each level.`
+        }else{
+          return ``
+        }
+      },
       effectDescription() {
-        return `Boosters XP now affects Points, but GP to XP exp is divided by 20.<br>Booster effect now affects Generator 5 gains.`;
+        return `Boosters XP now affects Points, but GP to XP exp is divided by 20.<br>Booster effect now affects Generator 5 gains.<br>Unlock the ablity to 'Buy Max Generators'.`;
       },
       done() {
         return player.b.points.gte(8);

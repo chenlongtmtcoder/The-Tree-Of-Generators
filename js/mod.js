@@ -12,11 +12,15 @@ let modInfo = {
 
 // Set your version in num and name
 let VERSION = {
-  num: "0.2.1",
-  name: "Boosted Part 2",
+  num: "0.2.1.1",
+  name: "Small QoL",
 };
 
 let changelog = `<h1>Changelog:</h1><br>
+<b>v0.2.1.1 - Small QoL</b><br>
+		- Added 'Buy Max Generators'.<br>
+    - Added a new milestone reward to 8 Boosters Generator.<br>
+    - Endgame: Same as v0.2.1<br>
   <h3>v0.2.1 - Boosted Part 2</h3><br>
 		- Added 5 MORE milestones in Booster Layer.<br>
     - Added 1 new Currency: Generator 5.<br>
