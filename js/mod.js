@@ -12,21 +12,25 @@ let modInfo = {
 
 // Set your version in num and name
 let VERSION = {
-  num: "0.2.1.1",
-  name: "Small QoL",
+  num: "0.2.1b",
+  name: "Small QoL+",
 };
 
+
 let changelog = `<h1>Changelog:</h1><br>
-<b>v0.2.1.1 - Small QoL</b><br>
+  <b>v0.2.1b</b><br>
+    - Raise the requirement of 'Buy Max Generators' to 8 Boosters.<br>
+    - Endgame: Same as v0.2.1<br><br>
+  <b>v0.2.1a - Small QoL</b><br>
 		- Added 'Buy Max Generators'.<br>
-    - Added a new milestone reward to 8 Boosters Generator.<br>
-    - Endgame: Same as v0.2.1<br>
+    - Added a new milestone reward to 5 Boosters Milestones.<br>
+    - Endgame: Same as v0.2.1<br><br>
   <h3>v0.2.1 - Boosted Part 2</h3><br>
 		- Added 5 MORE milestones in Booster Layer.<br>
     - Added 1 new Currency: Generator 5.<br>
     - Added 1 new Generators Buyable.<br>
     - Added 1 new Generator Upgrade.<br>
-    - Endgame: 10 Boosters.<br>
+    - Endgame: 10 Boosters.<br><br>
   <h2>v0.2 - Boosted Part 1</h2><br>
     - Added 1 new Currency: Boosters.<br>
     - Added 1 new reset Layer: Booster Layer.<br>

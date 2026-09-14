@@ -1206,7 +1206,7 @@ addLayer("b", {
         return true;
       },
       unlocked() {
-        return hasMilestone("b", 5);
+        return hasMilestone("b", 8);
       },
       onClick() {
         player.g.buyables[11] = new Decimal("0");
@@ -1330,7 +1330,7 @@ addLayer("b", {
         }
       },
       effectDescription() {
-        return `Boosters XP now affects Points, but GP to XP exp is divided by 20.<br>Booster effect now affects Generator 5 gains.<br>Unlock the ablity to 'Buy Max Generators'.`;
+        return `Boosters XP now affects Points, but GP to XP exp is divided by 20.<br>Booster effect now affects Generator 5 gains.<br>Unlock the ablity to 'Buy Max Generators' and 'Force Booster Reset'.`;
       },
       done() {
         return player.b.points.gte(8);
